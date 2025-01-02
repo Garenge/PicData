@@ -123,7 +123,7 @@ PODS:
     - SDWebImage (~> 5.0)
   - PPCatalystTool (1.0.4)
   - PPCustomAsyncOperation (0.1.1)
-  - PPToolKit (0.1.1)
+  - PPToolKit (0.1.3)
   - PromisesObjC (2.4.0)
   - RecaptchaInterop (100.0.0)
   - SDWebImage (5.12.5):
@@ -246,7 +246,7 @@ SPEC CHECKSUMS:
   PicDataSDK: ce06b62ef529ea6a15d971f7a0b95aaa2d4fe88a
   PPCatalystTool: 8c08ff72f6f79de7b37f4f04b5c0f346c535a65e
   PPCustomAsyncOperation: a9901452d6d5724d2c075535f7a16198a23eb8ee
-  PPToolKit: 87eeffbd7846bb11811d429c352a23d575d632f6
+  PPToolKit: ca27551c8173e7c8b2050af927056ec9ae44d4b9
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   RecaptchaInterop: 7d1a4a01a6b2cb1610a47ef3f85f0c411434cb21
   SDWebImage: 0905f1b7760fc8ac4198cae0036600d67478751e

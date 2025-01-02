@@ -69,6 +69,7 @@
 
 @dynamic filterBlock;
 /// 点语法过滤符合条件的元素, 生成新的数组
+
 - (NSArray * _Nonnull (^)(BOOL (^ _Nonnull)(id _Nonnull)))filterBlock {
     return ^NSArray *(BOOL(^block)(id element)) {
         return [self pp_filter:block];
@@ -87,6 +88,55 @@
     return array;
 }
 
+
+@dynamic filterWithIndexBlock;
+/// 点语法过滤符合条件的元素, 生成新的数组 带下标
+- (NSArray * _Nonnull (^)(BOOL (^ _Nonnull)(id _Nonnull, NSInteger)))filterWithIndexBlock {
+    return ^NSArray *(BOOL(^block)(id element, NSInteger index)) {
+        return [self pp_filterWithIndex:block];
+    };
+}
+/// 过滤符合条件的元素, 生成新的数组 带下标
+- (NSArray *)pp_filterWithIndex:(BOOL (^)(id _Nonnull, NSInteger))block {
+    if (!block) { return @[]; }
+    
+    NSMutableArray *array = [NSMutableArray array];
+    NSInteger count = self.count;
+    for (NSInteger index = 0; index < count; index ++) {
+        id object = [self objectAtIndex:index];
+        if (block(object, index)) {
+            [array addObject:object];
+        }
+    }
+    return array;
+}
+
+/// 过滤并生成新的数组, 回调返回重新生成的符合要求的对象
+- (NSArray *)pp_filter:(BOOL (^)(id _Nonnull))fblock pp_map:(id  _Nonnull (^)(id _Nonnull))mblock {
+    if (!fblock || !mblock) { return @[]; }
+
+    NSMutableArray *array = [NSMutableArray array];
+    for (id object in self) {
+        if (fblock(object)) {
+            [array addObject:mblock(object)];
+        }
+    }
+    return array;
+}
+/// 过滤并生成新的数组, 回调 带下标 返回重新生成的符合要求的对象
+- (NSArray *)pp_filter:(BOOL (^)(id _Nonnull, NSInteger))fblock pp_mapWithIndex:(id  _Nonnull (^)(id _Nonnull, NSInteger))mblock {
+    if (!fblock || !mblock) { return @[]; }
+
+    NSMutableArray *array = [NSMutableArray array];
+    NSInteger count = self.count;
+    for (NSInteger index = 0; index < count; index ++) {
+        id object = [self objectAtIndex:index];
+        if (fblock(object, index)) {
+            [array addObject:mblock(object, index)];
+        }
+    }
+    return array;
+}
 
 @dynamic containsBlock;
 /// 点语法判断是否包含满足条件的元素
