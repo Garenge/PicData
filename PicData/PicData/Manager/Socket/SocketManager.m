@@ -7,10 +7,11 @@
 //
 
 #import "SocketManager.h"
+#import <PPSocket/PPSocket-Swift.h>
 
 @interface SocketManager() <GCDAsyncSocketDelegate>
 
-@property (nonatomic, strong) GCDAsyncSocket *socket;
+@property (nonatomic, strong) PPClientSocketManager *client;
 
 @end
 
@@ -18,21 +19,21 @@
 
 singleton_implementation(SocketManager)
 
-- (GCDAsyncSocket *)socket {
-    if (nil == _socket) {
-        _socket = [[GCDAsyncSocket alloc] initWithDelegate:self delegateQueue:dispatch_get_main_queue()];
+- (PPClientSocketManager *)client {
+    if (nil == _client) {
+        _client = [[PPClientSocketManager alloc] init];
     }
-    return _socket;
+    return _client;
 }
 
 - (BOOL)isConnected {
-    return self.socket.isConnected;
+    return self.client.socket.isConnected;
 }
 
 - (void)connect {
-    if (!self.socket.isConnected) {
+    if (!self.isConnected) {
         NSError *error = nil;
-        [self.socket connectToHost:@"127.0.0.1" onPort:12138 error:&error];
+        [self.client.socket connectToHost:@"127.0.0.1" onPort:12138 error:&error];
         if (error) {
             NSLog(@"SocketManager: 连接socket服务器失败, 请先打开DataDemo");
         }
@@ -42,50 +43,27 @@ singleton_implementation(SocketManager)
 }
 
 - (void)sendMessage:(NSString *)message {
-    SocketMessageModel *model = [[SocketMessageModel alloc] initWithEvent:@"Test"];
+    SocketMessageModel *model = [[SocketMessageModel alloc] initWithEvent:@"test"];
     model.message = message;
-    NSData *data = [model.toString dataUsingEncoding:NSUTF8StringEncoding];
-    [self.socket writeData:data withTimeout:-1 tag:10086];
-    NSLog(@"SocketManager: 已发送消息: %@, tag: %d", model.toString, 10086);
+    [self.client sendDirectionMessageWith:model.toString completeHandler:^(NSString * _Nullable message, NSError * _Nullable error) {
+        if (error) {
+            NSLog(@"PicData receive data failed: %@", error);
+        } else {
+            NSLog(@"PicData receive data success: %@", message);
+        }
+    }];
 }
 
 #pragma mark - func
 - (void)scan {
     SocketMessageModel *model = [[SocketMessageModel alloc] initWithEvent:@"scan"];
-    NSData *data = [model.toString dataUsingEncoding:NSUTF8StringEncoding];
-    [self.socket writeData:data withTimeout:-1 tag:10086];
-    NSLog(@"SocketManager: 已发送消息: %@, tag: %d", model.toString, 10086);
-}
-
-#pragma mark - delegate
-
-- (void)socket:(GCDAsyncSocket *)sock didConnectToHost:(NSString *)host port:(uint16_t)port {
-    NSLog(@"SocketManager: 已连接: %@, port: %d", host, port);
-    [self.socket readDataWithTimeout:-1 tag:10086];
-    
-    [[NSNotificationCenter defaultCenter] postNotificationName:NotificationNameSocketDidConnected object:nil userInfo:@{
-        @"host": host ?: @"",
-        @"port": @(port),
+    [self.client sendDirectionMessageWith:model.toString completeHandler:^(NSString * _Nullable message, NSError * _Nullable error) {
+        if (error) {
+            NSLog(@"PicData receive data failed: %@", error);
+        } else {
+            NSLog(@"PicData receive data success: %@", message);
+        }
     }];
-}
-
-- (void)socketDidDisconnect:(GCDAsyncSocket *)sock withError:(NSError *)err {
-    NSLog(@"SocketManager: 已断开连接: %@", err);
-        
-    [[NSNotificationCenter defaultCenter] postNotificationName:NotificationNameSocketDidDisConnected object:nil userInfo:@{
-        @"error": err ?: [NSError errorWithDomain:@"断开连接" code:-1 userInfo:nil],
-    }];
-    
-}
-
-- (void)socket:(GCDAsyncSocket *)sock didReadData:(NSData *)data withTag:(long)tag {
-    NSString *string = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-    NSLog(@"SocketManager: 已收到消息: %@, tag: %ld", string, tag);
-    [self.socket readDataWithTimeout:-1 tag:10086];
-}
-
-- (void)socket:(GCDAsyncSocket *)sock didWriteDataWithTag:(long)tag {
-    NSLog(@"SocketManager: 已发送消息, tag: %ld", tag);
 }
 
 @end
