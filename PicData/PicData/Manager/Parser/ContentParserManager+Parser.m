@@ -194,6 +194,9 @@
     title = [self updateCustomContentName:title contentHref:href sourceModel:sourceModel];
 
     NSString *thumbnailUrl = imgE.attr(@"src");
+    if (nil == thumbnailUrl || thumbnailUrl.length == 0) {
+        thumbnailUrl = imgE.attr(@"data-src");
+    }
     thumbnailUrl = [thumbnailUrl stringByReplacingOccurrencesOfString:@"i0.wp.com/" withString:@""];
 
     PicContentModel *contentModel = [[PicContentModel alloc] init];
