@@ -176,6 +176,8 @@
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
 
+    NSLog(@"======== self.view.frame: %@", NSStringFromCGRect(self.view.frame));
+    NSLog(@"======== UIWindow.frame: %@", NSStringFromCGRect(UIApplication.sharedApplication.keyWindow.frame));
 #if TARGET_OS_MACCATALYST
 
     // 方法重置, 在mac端拖动界面大小之后, 刷新tag列表, 重新布局
