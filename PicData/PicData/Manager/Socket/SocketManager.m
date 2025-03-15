@@ -22,6 +22,14 @@ singleton_implementation(SocketManager)
 - (PPClientSocketManager *)client {
     if (nil == _client) {
         _client = [[PPClientSocketManager alloc] init];
+        _client.doClientDidConnectedClosure = ^(PPClientSocketManager * _Nonnull manager, GCDAsyncSocket * _Nonnull socket) {
+            NSLog(@"SocketManager: 连接socket服务器成功");
+            [NSNotificationCenter.defaultCenter postNotificationName:NotificationNameSocketDidConnected object:nil userInfo:nil];
+        };
+        _client.doClientDidDisconnectClosure = ^(PPClientSocketManager * _Nonnull manager, GCDAsyncSocket * _Nonnull socket, NSError * _Nullable error) {
+            NSLog(@"SocketManager: 断开socket服务器连接");
+            [NSNotificationCenter.defaultCenter postNotificationName:NotificationNameSocketDidDisConnected object:nil userInfo:nil];
+        };
     }
     return _client;
 }
