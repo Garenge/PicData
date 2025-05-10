@@ -52,7 +52,7 @@ static NSString *headerdentifier = @"headerdentifier";
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
 
-    [self reCallLoadDataList:1];
+//    [self reCallLoadDataList:1];
 }
 
 - (void)viewDidLoad {
