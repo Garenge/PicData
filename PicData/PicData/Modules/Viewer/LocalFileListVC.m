@@ -26,6 +26,9 @@
 
 @property (nonatomic, assign) BOOL isEditing;
 
+@property (nonatomic, strong, nullable) NSTimer *nextTimer;
+@property (nonatomic, strong) UIButton *autoPlayBtn;
+
 @end
 
 @implementation LocalFileListVC
@@ -921,6 +924,7 @@
 }
 
 - (void)doLeftButtonClickedAction:(UIButton *)sender {
+    [self doStopAutoPlayView];
     if (self.browser.currentPage - 1 < 0) {
         return;
     }
@@ -928,7 +932,39 @@
 }
 
 - (void)doRightButtonClickedAction:(UIButton *)sender {
+    [self doStopAutoPlayView];
+    [self dpViewNextImage];
+}
+
+- (void)doAutoPlayButtonClickedAction:(UIButton *)sender {
+    NSLog(@"========0 %ld", sender.allControlEvents);
+    
+    if (sender.selected) {
+        [self doStopAutoPlayView];
+    } else {
+        sender.selected = YES;
+        
+        [self.nextTimer invalidate];
+        
+        __weak typeof(self) weakSelf = self;
+        self.nextTimer = [NSTimer timerWithTimeInterval:0.5 repeats:YES block:^(NSTimer * _Nonnull timer) {
+            [weakSelf dpViewNextImage];
+        }];
+        [[NSRunLoop currentRunLoop] addTimer:self.nextTimer forMode:NSRunLoopCommonModes];
+    }
+}
+
+- (void)doStopAutoPlayView {
+    self.autoPlayBtn.selected = NO;
+    [self.nextTimer invalidate];
+    self.nextTimer = nil;
+}
+
+- (void)dpViewNextImage {
     if (self.browser.currentPage + 1 >= self.imgsList.count) {
+        [self doStopAutoPlayView];
+        [MBProgressHUD showInfoOnView:UIApplication.sharedApplication.keyWindow WithStatus:@"已经是最后一张了" afterDelay:1];
+        // TODO: 如果已经是最后一张了, 那就提示是否自动播放下一套图
         return;
     }
     [self.browser setCurrentPage:self.browser.currentPage + 1];
@@ -1055,7 +1091,7 @@
     [leftBtn mas_makeConstraints:^(MASConstraintMaker *make) {
         make.left.mas_equalTo(20);
         make.width.height.mas_equalTo(buttonWidth);
-        make.centerY.mas_equalTo(0);
+        make.centerY.mas_equalTo(0).multipliedBy(1.5);
     }];
     
     UIButton *rightBtn = [UIButton buttonWithType:UIButtonTypeCustom];
@@ -1069,7 +1105,23 @@
     [rightBtn mas_makeConstraints:^(MASConstraintMaker *make) {
         make.right.mas_equalTo(-20);
         make.width.height.mas_equalTo(buttonWidth);
-        make.centerY.mas_equalTo(0);
+        make.centerY.mas_equalTo(0).multipliedBy(1.5);
+    }];
+    
+    UIButton *autoPlayBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    [autoPlayBtn setTitle:@"自动播放" forState:UIControlStateNormal];
+    [autoPlayBtn setTitle:@"停止播放" forState:UIControlStateSelected];
+    autoPlayBtn.layer.cornerRadius = buttonWidth * 0.5;
+    autoPlayBtn.layer.masksToBounds = YES;
+    autoPlayBtn.backgroundColor = [UIColor colorWithWhite:0 alpha:0.3];
+    [autoPlayBtn addTarget:self action:@selector(doAutoPlayButtonClickedAction:) forControlEvents:UIControlEventTouchUpInside];
+    [browser.containerView addSubview:autoPlayBtn];
+    [browser.containerView bringSubviewToFront:autoPlayBtn];
+    self.autoPlayBtn = autoPlayBtn;
+    [autoPlayBtn mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.right.mas_equalTo(-20);
+        make.width.height.mas_equalTo(buttonWidth);
+        make.bottom.equalTo(rightBtn.mas_top).offset(-40);
     }];
     
 }
