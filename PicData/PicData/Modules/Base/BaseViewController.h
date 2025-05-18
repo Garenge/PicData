@@ -33,6 +33,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// 重写系统dealloc方法时先调用该方法, 方便打日志和子类调用
 - (void)willDealloc;
 
+/// 页面在拖拽下变形
+- (void)viewDidResize;
+
 @end
 
 @interface BaseViewController (ppEx)

@@ -173,19 +173,8 @@
     [self loadAllTags];
 }
 
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
-
-    NSLog(@"======== self.view.frame: %@", NSStringFromCGRect(self.view.frame));
-    NSLog(@"======== UIWindow.frame: %@", NSStringFromCGRect(UIApplication.sharedApplication.keyWindow.frame));
-#if TARGET_OS_MACCATALYST
-
-    // 方法重置, 在mac端拖动界面大小之后, 刷新tag列表, 重新布局
-    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(refreshDataList) object:nil];
-    [self performSelector:@selector(refreshDataList) afterDelay:0.5];
-
-#endif
-
+- (void)viewDidResize {
+    [self refreshDataList];
 }
 
 - (void)refreshDataList {

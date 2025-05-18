@@ -258,6 +258,13 @@
     self.isEditing = NO;
 }
 
+- (void)viewDidResize {
+    self.browser.frame = self.browser.superview.bounds;
+    [self.browser reloadData];
+}
+
+#pragma mark - action
+
 - (void)shareAllFiles:(UIButton *)sender {
     NSMutableArray *actions = [NSMutableArray array];
 #if TARGET_OS_MACCATALYST

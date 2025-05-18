@@ -25,8 +25,6 @@
 
 @property (nonatomic, strong) NSMutableDictionary *heightDic;
 
-@property (nonatomic, assign) CGFloat lastWidth;
-
 @property (nonatomic, assign) BOOL headerExpanded;
 
 @property (nonatomic, strong) EEBackView *preGesView;
@@ -254,25 +252,11 @@
     }
 }
 
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
-
-    if (self.view.mj_w == self.lastWidth) { return; }
-    self.lastWidth = self.view.mj_w;
-
-    // 方法重置, 在mac端拖动界面大小之后, 刷新tag列表, 重新布局
-    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(resizeMainView) object:nil];
-    [self performSelector:@selector(resizeMainView) afterDelay:0.5];
-
-}
-
-- (void)resizeMainView {
-
+- (void)viewDidResize {
     NSIndexPath *indexPath = self.tableView.indexPathsForVisibleRows.firstObject;
     if (indexPath == nil) { return; }
     [self.heightDic removeAllObjects];
     [self.tableView reloadData];
-
 }
 
 #pragma mark - data
