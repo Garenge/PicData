@@ -7,10 +7,13 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "SettingOperationModel.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface SettingViewController : BaseViewController
+
+@property (nonatomic, strong) NSArray <SettingOperationModel *>* operationModels;
 
 @end
 

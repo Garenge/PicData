@@ -12,6 +12,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface SettingPathViewController : BaseViewController
 
+@property (nonatomic, copy) void (^didUpdateData)(void);
+
 @end
 
 NS_ASSUME_NONNULL_END

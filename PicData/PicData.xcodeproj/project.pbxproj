@@ -80,6 +80,7 @@
 		9DC94C9E2552ECE5008ACAF8 /* BaseNavigationController.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DC94C9D2552ECE5008ACAF8 /* BaseNavigationController.m */; };
 		9DC94CA32552ECFE008ACAF8 /* AppTabBarController.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DC94CA22552ECFE008ACAF8 /* AppTabBarController.m */; };
 		9DC94CAB2552F7E0008ACAF8 /* LocalFileListVC.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DC94CAA2552F7E0008ACAF8 /* LocalFileListVC.m */; };
+		9DD0C6492DEB407700CE1D33 /* SettingOperationModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DD0C6482DEB407700CE1D33 /* SettingOperationModel.m */; };
 		9DE95C74244C3E0F00E31735 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DE95C73244C3E0F00E31735 /* AppDelegate.m */; };
 		9DE95C7F244C3E1100E31735 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9DE95C7E244C3E1100E31735 /* Assets.xcassets */; };
 		9DE95C82244C3E1100E31735 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9DE95C80244C3E1100E31735 /* LaunchScreen.storyboard */; };
@@ -261,6 +262,8 @@
 		9DC94CA22552ECFE008ACAF8 /* AppTabBarController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppTabBarController.m; sourceTree = "<group>"; };
 		9DC94CA92552F7E0008ACAF8 /* LocalFileListVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LocalFileListVC.h; sourceTree = "<group>"; };
 		9DC94CAA2552F7E0008ACAF8 /* LocalFileListVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LocalFileListVC.m; sourceTree = "<group>"; };
+		9DD0C6472DEB407700CE1D33 /* SettingOperationModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SettingOperationModel.h; sourceTree = "<group>"; };
+		9DD0C6482DEB407700CE1D33 /* SettingOperationModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SettingOperationModel.m; sourceTree = "<group>"; };
 		9DE95C6F244C3E0F00E31735 /* PicData.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PicData.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9DE95C72244C3E0F00E31735 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		9DE95C73244C3E0F00E31735 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -444,6 +447,8 @@
 				33AB92B324C3F5AA00E97E42 /* SettingViewController.m */,
 				9D4B0E34262307CE0062AD82 /* SettingPathViewController.h */,
 				9D4B0E35262307CE0062AD82 /* SettingPathViewController.m */,
+				9DD0C6472DEB407700CE1D33 /* SettingOperationModel.h */,
+				9DD0C6482DEB407700CE1D33 /* SettingOperationModel.m */,
 			);
 			path = Setting;
 			sourceTree = "<group>";
@@ -1106,6 +1111,7 @@
 				9DE95C74244C3E0F00E31735 /* AppDelegate.m in Sources */,
 				33E33D70282816C000BCDCD5 /* TasksContentView.m in Sources */,
 				332D015226FD845F00E3F387 /* TKGestureLockBackView.m in Sources */,
+				9DD0C6492DEB407700CE1D33 /* SettingOperationModel.m in Sources */,
 				9DE95CC8244C3FDD00E31735 /* error.c in Sources */,
 				9DE95CC5244C3FDD00E31735 /* attribute.c in Sources */,
 				9DE95CC6244C3FDD00E31735 /* char_ref.c in Sources */,

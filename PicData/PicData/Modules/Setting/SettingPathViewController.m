@@ -217,6 +217,7 @@
         [self showAlertWithTitle:@"提醒" message:@"确定修改下载路径吗, 最好在开始下载任务之前设置路径, 避免不必要的错误" confirmTitle:@"确定设置" confirmHandler:^(UIAlertAction * _Nonnull action) {
             [weakSelf.view endEditing:YES];
             [[PDDownloadManager sharedPDDownloadManager] updatesystemDownloadPath:weakSelf.textView.text];
+            PPIsBlockExecute(self.didUpdateData);
             weakSelf.fullPathLabel.text = [[PDDownloadManager sharedPDDownloadManager] systemDownloadFullPath];
             [MBProgressHUD showInfoOnView:weakSelf.view WithStatus:@"设置地址成功"];
         } cancelTitle:@"取消" cancelHandler:nil];

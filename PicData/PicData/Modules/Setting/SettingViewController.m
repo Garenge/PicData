@@ -11,36 +11,9 @@
 #import "SharedListViewController.h"
 #import <FirebaseStorage/FirebaseStorage-Swift.h>
 
-@interface SettingOperationModel : NSObject
-
-@property (nonatomic, strong) NSString *name;
-@property (nonatomic, strong) NSString *value;
-@property (nonatomic, strong) NSString *func;
-
-
-+ (instancetype)ModelWithName:(NSString *)name value:(NSString *)value func:(NSString *)func;
-
-@end
-
-@implementation SettingOperationModel
-
-+ (instancetype)ModelWithName:(NSString *)name value:(NSString *)value func:(NSString *)func {
-    SettingOperationModel *operationModel = [[SettingOperationModel alloc] init];
-    operationModel.name = name;
-    operationModel.value = value;
-    operationModel.func = func;
-    return operationModel;
-}
-
-@end
-
 @interface SettingViewController () <UITableViewDelegate, UITableViewDataSource>
 
 @property (nonatomic, strong) UITableView *tableView;
-
-@property (nonatomic, strong) NSArray <SettingOperationModel *>* operationModels;
-
-@property (nonatomic, strong) SettingOperationModel *monitorModel;
 
 @property (nonatomic, strong) NSString *DataDemoDBDwonloadedPath;
 
@@ -59,7 +32,6 @@
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-
     [self reloadData];
 }
 
@@ -68,39 +40,33 @@
 }
 
 - (void)reloadData {
-    self.operationModels = [[self getDefaultOperations] copy];
+    if (self.operationModels.count == 0) {
+        self.operationModels = [[self getDefaultOperations] copy];
+    }
     [self.tableView reloadData];
 }
 
 - (NSArray<SettingOperationModel *> *)operationModels {
     if (nil == _operationModels) {
-
-        _operationModels = [[self getDefaultOperations] copy];
-
-        NSLog(@"%@", [[PDDownloadManager sharedPDDownloadManager] systemDownloadFullPath]);
+        _operationModels = @[];
     }
     return _operationModels;
 }
 
 - (NSArray<SettingOperationModel *> *)getDefaultOperations {
-
+    
+    BOOL isMACCATALYST = NO;
+#if TARGET_OS_MACCATALYST
+    isMACCATALYST = YES;
+#endif
+    
+    NSLog(@"%@", [[PDDownloadManager sharedPDDownloadManager] systemDownloadFullPath]);
     [[PDDownloadManager sharedPDDownloadManager] checksystemDownloadFullPathExistNeedNotice:NO];
-    self.monitorModel = [SettingOperationModel ModelWithName:@"切换监控开关" value:[self getMonitorStatusString] func:@"checkMonitor:"];
+    SettingOperationModel *monitorModel = [SettingOperationModel ModelWithName:@"切换监控开关" value:[self getMonitorStatusString] func:@"checkMonitor:"];
 
     NSMutableArray *operationModels = [NSMutableArray array];
 
-#if TARGET_OS_MACCATALYST
-    // TODO: 设置路径
-    /// 目前该功能有点鸡肋, 已屏蔽
-    /// 设想应该是Mac端可以自由设置下载路径, 但是暂时设置的是相对documents, 不是我的本意
-    /// iOS相对documents设置, Mac端, 直接设置绝对路径, 才合理
-    [operationModels addObject:[SettingOperationModel ModelWithName:@"下载路径" value:[[PDDownloadManager sharedPDDownloadManager] systemDownloadPath] func:@"setDownloadPath:"]];
-
-#endif
-
-    [operationModels addObject:[SettingOperationModel ModelWithName:@"导出数据库" value:@"" func:@"shareDatabase:"]];
-
-    [operationModels addObject:[SettingOperationModel ModelWithName:@"查看本地分享" value:@"" func:@"showLocalSharedList:"]];
+     [operationModels addObject:[SettingOperationModel ModelWithName:@"查看本地分享" value:@"" func:@"showLocalSharedList:"]];
 
 
     // 如果是mac端  // #if !TARGET_OS_MACCATALYST // 如果不是mac端
@@ -116,17 +82,37 @@
 #endif
 
     [operationModels addObject:[SettingOperationModel ModelWithName:@"重置缓存" value:@"" func:@"resetCache:"]];
-    [operationModels addObject:self.monitorModel];
+    [operationModels addObject:monitorModel];
 
-    [operationModels addObject:[SettingOperationModel ModelWithName:@"切换最大同时下载数量" value:[NSString stringWithFormat:@"当前限制最多%ld个任务", [PDDownloadManager sharedPDDownloadManager].maxDownloadOperationCount] func:@"changeMaxDownloadOperationCount:"]];
-    [operationModels addObject:[SettingOperationModel ModelWithName:@"一键停止下载" value:@"" func:@"onekeyStopDownload:"]];
-    [operationModels addObject:[SettingOperationModel ModelWithName:@"重新下载已完成任务" value:@"" func:@"restartAllDownloads:"]];
-
-    [operationModels addObject:[SettingOperationModel ModelWithName:@"Socket-连接" value:[NSString stringWithFormat:@"127.0.0.1:12138%@", [SocketManager sharedSocketManager].isConnected ? @"(已连接)" : @"(未连接)"] func:@"socket_connect:"]];
-
-    [operationModels addObject:[SettingOperationModel ModelWithName:@"Socket-文件扫描" value:@"" func:@"socket_scan:"]];
+    SettingOperationModel *downloadModel = [SettingOperationModel ModelWithName:@"下载设置" value:@"" func:@""];
+    NSMutableArray *downloadSubModels = [NSMutableArray array];
     
-    [operationModels addObject:[SettingOperationModel ModelWithName:@"下载DataDemo.db" value:self.DataDemoDBDwonloadedPath.length > 0 ? @"已下载" : @"未下载" func:@"downloadDataDemoDB:"]];
+    if (isMACCATALYST) {
+        // TODO: 设置路径
+        /// 目前该功能有点鸡肋, 已屏蔽
+        /// 设想应该是Mac端可以自由设置下载路径, 但是暂时设置的是相对documents, 不是我的本意
+        /// iOS相对documents设置, Mac端, 直接设置绝对路径, 才合理
+        [downloadSubModels addObject:[SettingOperationModel ModelWithName:@"下载路径" value:[[PDDownloadManager sharedPDDownloadManager] systemDownloadPath] func:@"setDownloadPath:"]];
+    }
+    [downloadSubModels addObject:[SettingOperationModel ModelWithName:@"切换最大同时下载数量" value:[NSString stringWithFormat:@"当前限制最多%ld个任务", [PDDownloadManager sharedPDDownloadManager].maxDownloadOperationCount] func:@"changeMaxDownloadOperationCount:"]];
+    [downloadSubModels addObject:[SettingOperationModel ModelWithName:@"一键停止下载" value:@"" func:@"onekeyStopDownload:"]];
+    [downloadSubModels addObject:[SettingOperationModel ModelWithName:@"重新下载已完成任务" value:@"" func:@"restartAllDownloads:"]];
+    downloadModel.subOperationModels = downloadSubModels;
+    [operationModels addObject:downloadModel];
+    
+    SettingOperationModel *socketModel = [SettingOperationModel ModelWithName:@"Socket" value:@"" func:@""];
+    socketModel.subOperationModels = @[
+        [SettingOperationModel ModelWithName:@"Socket-连接" value:[NSString stringWithFormat:@"127.0.0.1:12138%@", [SocketManager sharedSocketManager].isConnected ? @"(已连接)" : @"(未连接)"] func:@"socket_connect:"],
+        [SettingOperationModel ModelWithName:@"Socket-文件扫描" value:@"" func:@"socket_scan:"]
+    ];
+    [operationModels addObject:socketModel];
+    
+    SettingOperationModel *dataModel = [SettingOperationModel ModelWithName:@"数据库" value:@"" func:@""];
+    dataModel.subOperationModels = @[
+        [SettingOperationModel ModelWithName:@"导出数据库" value:@"" func:@"shareDatabase:"],
+    [SettingOperationModel ModelWithName:@"下载DataDemo.db" value:self.DataDemoDBDwonloadedPath.length > 0 ? @"已下载" : @"未下载" func:@"downloadDataDemoDB:"],
+    ];
+    [operationModels addObject:dataModel];
 
     return operationModels;
 }
@@ -214,7 +200,7 @@ static NSString *identifier = @"identifier";
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
-    [self performSelfFuncWithString:self.operationModels[indexPath.row].func withObject:cell];
+    [self performSelfFuncWithOperationModel:self.operationModels[indexPath.row] withCell:cell];
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -222,6 +208,18 @@ static NSString *identifier = @"identifier";
 }
 
 #pragma mark - func
+
+- (void)performSelfFuncWithOperationModel:(SettingOperationModel *)operationModel withCell:(UITableViewCell *)cell {
+    
+    if (operationModel.subOperationModels.count > 0) {
+        SettingViewController *vc = [[SettingViewController alloc] init];
+        vc.operationModels = operationModel.subOperationModels;
+        [self.navigationController pushViewController:vc animated:YES];
+        return;
+    }
+    
+    [self performSelfFuncWithString:operationModel.func withObject:operationModel];
+}
 
 - (void)checkNewVersion:(UIView *)sender {
 
@@ -234,10 +232,14 @@ static NSString *identifier = @"identifier";
     } cancelTitle:@"不更了" cancelHandler:nil];
 }
 
-- (void)setDownloadPath:(UIView *)sender {
+- (void)setDownloadPath:(SettingOperationModel *)operationModel {
     [UIPasteboard generalPasteboard].string = [[PDDownloadManager sharedPDDownloadManager] systemDownloadFullPath];
     [MBProgressHUD showInfoOnView:self.view WithStatus:@"已经复制到粘贴板"];
     SettingPathViewController *vc = [[SettingPathViewController alloc] init];
+    vc.didUpdateData = ^{
+        operationModel.value = [[PDDownloadManager sharedPDDownloadManager] systemDownloadPath];
+        [self reloadData];
+    };
     vc.hidesBottomBarWhenPushed = YES;
     [self.navigationController pushViewController:vc animated:YES];
 }
@@ -344,13 +346,16 @@ static NSString *identifier = @"identifier";
     [[SocketManager sharedSocketManager] scan];
 }
 
-- (void)checkMonitor:(UIView *)sender {
+- (void)checkMonitor:(SettingOperationModel *)operationModel {
     [AppTool inversePerformanceMonitorStatus];
 
-    self.monitorModel.value = [self getMonitorStatusString];
+    operationModel.value = [self getMonitorStatusString];
 
-    if ([self.operationModels containsObject:self.monitorModel]) {
-        NSInteger index = [self.operationModels indexOfObject:self.monitorModel];
+    NSInteger index = [self.operationModels pp_firstIndex:^BOOL(SettingOperationModel * _Nonnull element) {
+        return [element isEqual:operationModel];
+    }];
+    
+    if (index >= 0) {
         [self.tableView reloadRowAtIndexPath:[NSIndexPath indexPathForRow:index inSection:0] withRowAnimation:UITableViewRowAnimationFade];
     }
 }
@@ -361,7 +366,7 @@ static NSString *identifier = @"identifier";
     } cancelTitle:@"以后再说" cancelHandler:nil];
 }
 
-- (void)changeMaxDownloadOperationCount: (UIView *)sender {
+- (void)changeMaxDownloadOperationCount:(SettingOperationModel *)operationModel {
 
     NSString *message = [NSString stringWithFormat:@"设置同时下载的最大图片数量, 该值介于%ld和%ld之间", [PDDownloadManager.sharedPDDownloadManager defaultMinDownloadOperationCount], [PDDownloadManager.sharedPDDownloadManager defaultMaxDownloadOperationCount]];
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"设置最大任务数" message:message preferredStyle:UIAlertControllerStyleAlert];
@@ -375,13 +380,14 @@ static NSString *identifier = @"identifier";
         UITextField *field = alert.textFields.firstObject;
         if ([field.text integerValue] > 0) {
             PDDownloadManager.sharedPDDownloadManager.maxDownloadOperationCount = [field.text integerValue];
+            operationModel.value = [NSString stringWithFormat:@"当前限制最多%ld个任务", [PDDownloadManager sharedPDDownloadManager].maxDownloadOperationCount];
             [self reloadData];
         }
     }]];
     [self presentViewController:alert animated:YES completion:nil];
 }
 
-- (void)downloadDataDemoDB:(UIView *)sender {
+- (void)downloadDataDemoDB:(SettingOperationModel *)operationModel {
     
     NSMutableArray *actions = [NSMutableArray array];
     NSString *message = @"是否下载DataDemo.db?";
@@ -393,7 +399,8 @@ static NSString *identifier = @"identifier";
             NSLog(@"DataDemo.db download isSuccess: %d, fileDownloadPath: %@", isSuccess, fileDownloadPath);
             
             weakSelf.DataDemoDBDwonloadedPath = fileDownloadPath;
-            [self reloadData];
+            operationModel.value = weakSelf.DataDemoDBDwonloadedPath.length > 0 ? @"已下载" : @"未下载";
+            [weakSelf reloadData];
             [weakSelf handleDownloadDataDemoDB:weakSelf.DataDemoDBDwonloadedPath];
         }];
     }];
