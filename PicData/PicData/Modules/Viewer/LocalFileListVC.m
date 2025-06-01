@@ -768,6 +768,7 @@
             if (weakSelf.navigationController.viewControllers.count == 1) {
                 [weakSelf.contentView.mj_header beginRefreshing];
             } else {
+                PPIsBlockExecute(weakSelf.didClearFolderBlock);
                 [weakSelf.navigationController popViewControllerAnimated:YES];
             }
         } else {

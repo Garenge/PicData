@@ -166,6 +166,10 @@ static NSString *headerdentifier = @"headerdentifier";
     }
 
     LocalFileListVC *fileListVC = [[LocalFileListVC alloc] init];
+    __weak typeof(self) weakSelf = self;
+    fileListVC.didClearFolderBlock = ^{
+        [weakSelf reCallLoadDataList:0.5];
+    };
     fileListVC.targetFilePath = [[PDDownloadManager sharedPDDownloadManager] getDirPathWithSource:sourceModel contentModel:taskModel];
     [self.navigationController pushViewController:fileListVC animated:YES];
 }

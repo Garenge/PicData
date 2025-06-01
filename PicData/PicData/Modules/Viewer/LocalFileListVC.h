@@ -15,6 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// 上衣个页面传过来的路径
 @property (nonatomic, strong) NSString *targetFilePath;
 
+@property (nonatomic, copy) void(^didClearFolderBlock)(void);
+
 @end
 
 NS_ASSUME_NONNULL_END
