@@ -23,6 +23,11 @@ singleton_interface(AppTool)
 @property (nonatomic, strong, nonnull) PicNetModel *currentHostModel;
 
 @property (nonatomic, strong, readonly) NSArray <PicNetModel *> *hostModels;
+/// 是否已经更新最新的站点
+@property (nonatomic, assign) BOOL hasLatestHosts;
+/// 更新最新的站点, 建议阻塞UI
+- (void)requestPicNetJson:(void(^)(NSArray <PicNetModel *> *models, NSError *error))completion;
+
 @property (nonatomic, strong, readonly) NSArray <NSString *> *searchKeys;
 
 /// 获取当前是否支持横屏

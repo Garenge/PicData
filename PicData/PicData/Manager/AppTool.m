@@ -7,6 +7,7 @@
 //
 
 #import "AppTool.h"
+#import <LeanCloudObjc/Foundation.h>
 
 #define KHOSTURLKEY @"KHOSTURLKEY"
 
@@ -70,27 +71,7 @@ singleton_implementation(AppTool)
 - (NSArray<PicNetModel *> *)hostModels {
     if (nil == _hostModels) {
         NSString *filePath = [[NSBundle mainBundle] pathForResource:@"PicNet" ofType:@"json"];
-        NSError *jsError = nil;
-        NSDictionary *dictionary = [NSJSONSerialization JSONObjectWithData:[NSData dataWithContentsOfFile:filePath] options:NSJSONReadingMutableContainers error:&jsError];
-        NSArray *array = dictionary[@"hosts"];
-        _searchKeys = [dictionary[@"searchKeys"] sortedArrayUsingSelector:@selector(localizedStandardCompare:)];
-        if (nil == jsError && array.count > 0) {
-            NSArray *hostModels = [PicNetModel mj_objectArrayWithKeyValuesArray:array];
-            NSMutableArray *hostModelsM = [NSMutableArray array];
-            for (PicNetModel *model in hostModels) {
-                if (!model.prepared) { continue; }
-                [hostModelsM addObject:model];
-
-                if (model.referer.length > 0) {
-                    [self.referTypes addObject:@(model.sourceType)];
-                }
-            }
-            _hostModels = hostModelsM.copy;
-        }
-
-        if (nil == _hostModels || _hostModels.count == 0) {
-            [[NSNotificationCenter defaultCenter] postNotificationName:NotificationNameInitHostModelsFailed object:nil];
-        }
+        [self paraseHostModelsFromFile:filePath];
     }
     return _hostModels;
 }
@@ -250,6 +231,53 @@ singleton_implementation(AppTool)
 }
 + (NSString *)getStringWithData:(NSData *)data dataEncoding:(NSStringEncoding)dataEncoding {
     return [[NSString alloc] initWithData:data encoding:dataEncoding];
+}
+
+#pragma mark - hostModels
+
+- (void)paraseHostModelsFromFile:(NSString *)filePath {
+    NSError *jsError = nil;
+    NSDictionary *dictionary = [NSJSONSerialization JSONObjectWithData:[NSData dataWithContentsOfFile:filePath] options:NSJSONReadingMutableContainers error:&jsError];
+    NSArray *array = dictionary[@"hosts"];
+    _searchKeys = [dictionary[@"searchKeys"] sortedArrayUsingSelector:@selector(localizedStandardCompare:)];
+    if (nil == jsError && array.count > 0) {
+        NSArray *hostModels = [PicNetModel mj_objectArrayWithKeyValuesArray:array];
+        NSMutableArray *hostModelsM = [NSMutableArray array];
+        for (PicNetModel *model in hostModels) {
+            if (!model.prepared) { continue; }
+            [hostModelsM addObject:model];
+            
+            if (model.referer.length > 0) {
+                [self.referTypes addObject:@(model.sourceType)];
+            }
+        }
+        _hostModels = hostModelsM.copy;
+    } else {
+        _hostModels = nil;
+    }
+    if (nil == _hostModels || _hostModels.count == 0) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:NotificationNameInitHostModelsFailed object:nil];
+    }
+}
+
+- (void)requestPicNetJson:(void (^)(NSArray<PicNetModel *> * _Nonnull, NSError * _Nonnull))completion {
+    LCFile *file = [LCFile fileWithObjectId:@"683c56632b2fd8404bd8eaf6" url:@"http://lc-zt905pRz.cn-n1.lcfile.com/7wa2W00mipiig8Et2Tg5G3WG2KdcoBcJ/PicNet.json"];
+    [file downloadWithOption:LCFileDownloadOptionIgnoringCachedData progress:^(NSInteger number) {
+        NSLog(@"======== %ld%%", number);
+    } completionHandler:^(NSURL * _Nullable filePath, NSError * _Nullable error) {
+        self.hasLatestHosts = YES;
+        if (error) {
+            NSLog(@"======== 文件下载失败: %@", error);
+        } else {
+            NSLog(@"======== 文件下载成功");
+            NSData *data = [NSData dataWithContentsOfURL:filePath];
+            NSError *jsonError = nil;
+            NSDictionary *dataDic = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:&jsonError];
+            NSLog(@"======== 数据解析成功: %@", dataDic);
+            [self paraseHostModelsFromFile:filePath.path];
+        }
+        PPIsBlockExecute(completion, self.hostModels, error);
+    }];
 }
 
 #pragma mark - SDWebImage

@@ -159,18 +159,31 @@
 }
 
 - (void)viewDidLoad {
-    [super viewDidLoad];
-
-    [[TKGestureLockManager sharedInstance] showGestureLockWindow];
-
-    MJWeakSelf
-    [self cw_registerShowIntractiveWithEdgeGesture:NO transitionDirectionAutoBlock:^(CWDrawerTransitionDirection direction) {
-        if (direction == CWDrawerTransitionFromLeft) {
-            [weakSelf selectNetHost:nil];
-        }
-    }];
-
-    [self loadAllTags];
+    
+    
+    if (!AppTool.sharedAppTool.hasLatestHosts) {
+        
+        [MBProgressHUD showHUDAddedTo:UIApplication.sharedApplication.keyWindow animated:YES];
+        
+        [AppTool.sharedAppTool requestPicNetJson:^(NSArray<PicNetModel *> * _Nonnull models, NSError * _Nonnull error) {
+            [MBProgressHUD hideHUDForView:UIApplication.sharedApplication.keyWindow animated:YES];
+            
+            [super viewDidLoad];
+            
+            [[TKGestureLockManager sharedInstance] showGestureLockWindow];
+            
+            MJWeakSelf
+            [self cw_registerShowIntractiveWithEdgeGesture:NO transitionDirectionAutoBlock:^(CWDrawerTransitionDirection direction) {
+                if (direction == CWDrawerTransitionFromLeft) {
+                    [weakSelf selectNetHost:nil];
+                }
+            }];
+            
+            [self loadAllTags];
+        }];
+        
+        return;
+    }
 }
 
 - (void)viewDidResize {

@@ -8,6 +8,7 @@
 
 #import "AppDelegate.h"
 #import <FirebaseCore/FirebaseCore.h>
+#import <LeanCloudObjc/Foundation.h>
 
 @interface AppDelegate ()
 
@@ -75,6 +76,10 @@
     [self setupDownloadManager];
     
     [FIRApp configure];
+    
+    [LCApplication setApplicationId:@"zt905pRz9SD2Tr2LQHNbKKzz-gzGzoHsz"
+                          clientKey:@"mlhD78Z4D2nziRSbxcvWdFj8"
+                    serverURLString:@"https://zt905prz.lc-cn-n1-shared.com"];
 
     // 检查更新
     dispatch_after(2, dispatch_get_main_queue(), ^{
