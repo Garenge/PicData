@@ -109,6 +109,13 @@ PODS:
     - GoogleUtilities/Privacy
   - GTMSessionFetcher/Core (3.5.0)
   - IQKeyboardManager (6.5.9)
+  - LeanCloudObjc (14.0.0):
+    - LeanCloudObjc/Realtime (= 14.0.0)
+  - LeanCloudObjc/Foundation (14.0.0)
+  - "LeanCloudObjc/Protobuf+Protocol (14.0.0)"
+  - LeanCloudObjc/Realtime (14.0.0):
+    - LeanCloudObjc/Foundation (= 14.0.0)
+    - "LeanCloudObjc/Protobuf+Protocol (= 14.0.0)"
   - Masonry (1.1.0)
   - MBProgressHUD (1.1.0)
   - MJExtension (3.0.17)
@@ -158,6 +165,7 @@ DEPENDENCIES:
   - FirebaseAuth
   - FirebaseStorageUI
   - IQKeyboardManager
+  - LeanCloudObjc
   - Masonry
   - MBProgressHUD (~> 1.1.0)
   - MJExtension (~> 3.0.13)
@@ -191,6 +199,7 @@ SPEC REPOS:
     - GoogleAppMeasurement
     - GoogleUtilities
     - GTMSessionFetcher
+    - LeanCloudObjc
     - nanopb
     - PromisesObjC
     - RecaptchaInterop
@@ -243,6 +252,7 @@ SPEC CHECKSUMS:
   GoogleUtilities: ea963c370a38a8069cc5f7ba4ca849a60b6d7d15
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
   IQKeyboardManager: 241cc94ccabc9deb8f8bd7d12f00d73288d13ecc
+  LeanCloudObjc: 2b7543b3976e9f105ba5bf3e99de3ea58458bf23
   Masonry: 678fab65091a9290e40e2832a55e7ab731aad201
   MBProgressHUD: e7baa36a220447d8aeb12769bf0585582f3866d9
   MJExtension: 74ec83124a68891619fb7ba9c5c811bbf1691076
@@ -264,6 +274,6 @@ SPEC CHECKSUMS:
   YYCategories: 6bcd4314c6661a561410dce4a793379ebd306abd
   YYImage: 20ec986d18a8d0ad421619d166a9e628097e2433
 
-PODFILE CHECKSUM: d63e28a1103b68446cb5c6e9014768f5101cf16c
+PODFILE CHECKSUM: 7b788df073ec8c7085840e2451014fe87bf3db25
 
 COCOAPODS: 1.16.2
