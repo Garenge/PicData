@@ -163,10 +163,7 @@
     
     if (!AppTool.sharedAppTool.hasLatestHosts) {
         
-        [MBProgressHUD showHUDAddedTo:UIApplication.sharedApplication.keyWindow animated:YES];
-        
         [AppTool.sharedAppTool requestPicNetJson:^(NSArray<PicNetModel *> * _Nonnull models, NSError * _Nonnull error) {
-            [MBProgressHUD hideHUDForView:UIApplication.sharedApplication.keyWindow animated:YES];
             
             [super viewDidLoad];
             
