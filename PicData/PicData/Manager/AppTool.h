@@ -8,6 +8,7 @@
 
 #import <Foundation/Foundation.h>
 #import "PicNetModel.h"
+#import "PicClassModel.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -21,7 +22,7 @@ singleton_interface(AppTool)
 @property (nonatomic, strong) NSString *HOST_URL;
 
 @property (nonatomic, strong, nonnull) PicNetModel *currentHostModel;
-
+- (void)doAddNewSearchKey:(NSString *)searchKey forClassModel:(PicClassModel *)classModel finished:(void(^)(BOOL isSuccess, NSString *_Nullable message))finished;
 @property (nonatomic, strong, readonly) NSArray <PicNetModel *> *hostModels;
 /// 是否已经更新最新的站点
 @property (nonatomic, assign) BOOL hasLatestHosts;

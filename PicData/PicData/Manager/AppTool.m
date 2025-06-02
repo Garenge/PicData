@@ -34,17 +34,7 @@ singleton_implementation(AppTool)
 - (PicNetModel *)currentHostModel {
     if (nil == _currentHostModel) {
 
-        NSString *host_url = [self getHost_url];
-        for (PicNetModel *netModel in [self hostModels]) {
-            if ([netModel.HOST_URL isEqualToString:host_url]) {
-                _currentHostModel = netModel;
-            }
-        }
-
-        if (nil == _currentHostModel) {
-            _currentHostModel = [self hostModels].firstObject;
-            [self saveHost_url:_currentHostModel.HOST_URL];
-        }
+        [self refreshCurrentHostModel];
     }
     return _currentHostModel;
 }
@@ -53,6 +43,20 @@ singleton_implementation(AppTool)
     _currentHostModel = currentHostModel;
 
     [self saveHost_url:currentHostModel.HOST_URL];
+}
+
+- (void)refreshCurrentHostModel {
+    NSString *host_url = [self getHost_url];
+    for (PicNetModel *netModel in [self hostModels]) {
+        if ([netModel.HOST_URL isEqualToString:host_url]) {
+            _currentHostModel = netModel;
+        }
+    }
+    
+    if (nil == _currentHostModel) {
+        _currentHostModel = [self hostModels].firstObject;
+        [self saveHost_url:_currentHostModel.HOST_URL];
+    }
 }
 
 - (NSString *)getHost_url {
@@ -70,8 +74,15 @@ singleton_implementation(AppTool)
 @synthesize hostModels = _hostModels;
 - (NSArray<PicNetModel *> *)hostModels {
     if (nil == _hostModels) {
-        NSString *filePath = [[NSBundle mainBundle] pathForResource:@"PicNet" ofType:@"json"];
-        [self paraseHostModelsFromFile:filePath];
+        
+        NSString *documentDir = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+        NSString *targetFilePath = [documentDir stringByAppendingPathComponent:@"PicNet.json"];
+        if (![NSFileManager.defaultManager fileExistsAtPath:targetFilePath]) {
+            NSString *filePath = [[NSBundle mainBundle] pathForResource:@"PicNet" ofType:@"json"];
+            [NSFileManager.defaultManager copyItemAtPath:filePath toPath:targetFilePath error:nil];
+        }
+        
+        [self paraseHostModelsFromFile:targetFilePath];
     }
     return _hostModels;
 }
@@ -269,8 +280,18 @@ singleton_implementation(AppTool)
         if (error) {
             NSLog(@"======== 文件下载失败: %@", error);
         } else {
-            NSLog(@"======== 文件下载成功");
+            
             NSData *data = [NSData dataWithContentsOfURL:filePath];
+            
+            NSString *documentDir = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+            NSString *targetFilePath = [documentDir stringByAppendingPathComponent:@"PicNet.json"];
+            BOOL isSuccess = [data writeToFile:targetFilePath atomically:YES];
+            if (isSuccess) {
+                NSLog(@"======== 文件下载成功");
+            } else {
+                NSLog(@"======== 文件下载成功, 写入本地失败");
+            }
+            
             NSError *jsonError = nil;
             NSDictionary *dataDic = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:&jsonError];
             NSLog(@"======== 数据解析成功: %@", dataDic);
@@ -278,6 +299,42 @@ singleton_implementation(AppTool)
         }
         PPIsBlockExecute(completion, self.hostModels, error);
     }];
+}
+
+- (void)doAddNewSearchKey:(NSString *)searchKey forClassModel:(PicClassModel *)classModel finished:(nonnull void (^)(BOOL, NSString * _Nullable))finished {
+    BOOL isContains = [classModel.subTitleStrings containsObject:searchKey];
+    if (isContains) {
+        PPIsBlockExecute(finished, NO, @"已存在相同关键字");
+        return;
+    }
+    
+    NSString *documentDir = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    NSString *targetFilePath = [documentDir stringByAppendingPathComponent:@"PicNet.json"];
+    NSData *data = [NSData dataWithContentsOfFile:targetFilePath];
+    NSMutableDictionary *jsonDic = [NSMutableDictionary dictionaryWithDictionary:[NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:nil]];
+    NSMutableArray <NSDictionary *>*hosts = [NSMutableArray arrayWithArray:jsonDic[@"hosts"]];
+    [hosts pp_enumeration:^(NSDictionary * _Nonnull element, NSInteger index, NSInteger totalCount) {
+        NSMutableDictionary *mutableDic = [NSMutableDictionary dictionaryWithDictionary:element];
+        NSString *host_url = mutableDic[@"HOST_URL"];
+        if (![host_url isEqualToString:classModel.HOST_URL]) {
+            return;
+        }
+        NSMutableArray *searchKeys = [NSMutableArray arrayWithArray:mutableDic[@"searchKeys"]];
+        [searchKeys addObject:searchKey];
+        mutableDic[@"searchKeys"] = searchKeys;
+        hosts[index] = mutableDic;
+    }];
+    jsonDic[@"hosts"] = hosts;
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:jsonDic options:NSJSONWritingPrettyPrinted error:nil];
+    BOOL isSuccess = [jsonData writeToFile:targetFilePath atomically:YES];
+    if (isSuccess) {
+        [self paraseHostModelsFromFile:targetFilePath];
+        [self refreshCurrentHostModel];
+        PPIsBlockExecute(finished, YES, nil);
+    } else {
+        PPIsBlockExecute(finished, NO, @"添加失败");
+    }
+    
 }
 
 #pragma mark - SDWebImage

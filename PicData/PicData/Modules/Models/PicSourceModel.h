@@ -7,6 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "PicBaseModel.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -14,6 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, strong) NSString *url;
 @property (nonatomic, assign) int sourceType;
+
+@property (nonatomic, assign) BOOL isEditType;
 
 - (id)copy;
 

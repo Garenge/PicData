@@ -199,6 +199,46 @@
     [MBProgressHUD hideHUDForView:self.view animated:YES];
 }
 
+#pragma mark - edit
+
+- (void)doClickAddSourceBtn {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"新增搜索" message:@"请输入新增的关键字" preferredStyle:UIAlertControllerStyleAlert];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
+        textField.clearButtonMode = UITextFieldViewModeWhileEditing;
+        textField.placeholder = @"请输入新的搜索关键字";
+    }];
+    [alert addAction:[UIAlertAction actionWithTitle:@"确定添加" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        
+        UITextField *searchKey = alert.textFields[0];
+        [self doAddnewSearchKey:searchKey.text];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)doAddnewSearchKey:(NSString *)searchKey {
+    if (nil == searchKey || searchKey.length == 0) {
+        [MBProgressHUD showInfoOnView:self.view WithStatus:@"请输入搜索关键字"];
+        return;
+    }
+    PicClassModel *classModel = [self.classModels pp_first:^BOOL(PicClassModel * _Nonnull element) {
+        return element.isLocal;
+    }];
+    if (nil == classModel) {
+        return;
+    }
+    // 尝试添加
+    [AppTool.sharedAppTool doAddNewSearchKey:searchKey forClassModel:classModel finished:^(BOOL isSuccess, NSString * _Nullable message) {
+        if (isSuccess) {
+            [MBProgressHUD showInfoOnView:self.view WithStatus:@"添加成功"];
+            // 重新加载数据
+            [self loadAllTags];
+        } else {
+            [MBProgressHUD showInfoOnView:self.view WithStatus:message];
+        }
+    }];
+}
+
 #pragma mark - request
 
 #pragma mark request tags
@@ -258,8 +298,15 @@
             [subTitles addObject:sourceModel];
         }
     }
-
+    
+    // 临时加一个添加按钮
+    PicSourceModel *addSourceModel = [[PicSourceModel alloc] init];
+    addSourceModel.title = @"新增分类";
+    addSourceModel.isEditType = YES;
+    [subTitles addObject:addSourceModel];
+    
     PicClassModel *indexModel = [PicClassModel modelWithHOST_URL:hostModel.HOST_URL Title:@"首页" sourceType:hostModel.sourceType subTitles:subTitles];
+    indexModel.isLocal = YES;
     [self.classModels addObject:indexModel];
 
     [self loadRightNavigationItem:self.tableView.classifyStyle == PicClassifyTableViewStyleDefault];
@@ -314,8 +361,14 @@
 -  (void)tableView:(PicClassifyTableView *)tableView didSelectActionAtIndexPath:(NSIndexPath *)indexPath withClassModel:(PicClassModel *)classModel {
 
     PicSourceModel *sourceModel = classModel.subTitles[indexPath.row];
+    
+    if (classModel.isLocal && sourceModel.isEditType) {
+        // 新增分类
+        [self doClickAddSourceBtn];
+        return;
+    }
     [sourceModel insertTable];
-
+    
     ContentViewController *contentVC = [[ContentViewController alloc] initWithSourceModel:sourceModel];
     [self.navigationController pushViewController:contentVC animated:YES];
 }
