@@ -272,32 +272,40 @@ singleton_implementation(AppTool)
 }
 
 - (void)requestPicNetJson:(void (^)(NSArray<PicNetModel *> * _Nonnull, NSError * _Nonnull))completion {
-    LCFile *file = [LCFile fileWithObjectId:@"683c56632b2fd8404bd8eaf6" url:@"http://lc-zt905pRz.cn-n1.lcfile.com/7wa2W00mipiig8Et2Tg5G3WG2KdcoBcJ/PicNet.json"];
-    [file downloadWithOption:LCFileDownloadOptionIgnoringCachedData progress:^(NSInteger number) {
-        NSLog(@"======== %ld%%", number);
-    } completionHandler:^(NSURL * _Nullable filePath, NSError * _Nullable error) {
-        self.hasLatestHosts = YES;
+    
+    LCQuery *query = [LCQuery queryWithClassName:@"FileObject"];
+    [query getObjectInBackgroundWithId:@"683ef63f2b2fd8404bd92338" block:^(LCObject *todo, NSError *error) {
         if (error) {
             NSLog(@"======== 文件下载失败: %@", error);
-        } else {
-            
-            NSData *data = [NSData dataWithContentsOfURL:filePath];
-            
-            NSString *documentDir = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-            NSString *targetFilePath = [documentDir stringByAppendingPathComponent:@"PicNet.json"];
-            BOOL isSuccess = [data writeToFile:targetFilePath atomically:YES];
-            if (isSuccess) {
-                NSLog(@"======== 文件下载成功");
-            } else {
-                NSLog(@"======== 文件下载成功, 写入本地失败");
-            }
-            
-            NSError *jsonError = nil;
-            NSDictionary *dataDic = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:&jsonError];
-            NSLog(@"======== 数据解析成功: %@", dataDic);
-            [self paraseHostModelsFromFile:filePath.path];
+            return;
         }
-        PPIsBlockExecute(completion, self.hostModels, error);
+        LCFile *file = [todo objectForKey:@"file"];
+        [file downloadWithOption:LCFileDownloadOptionIgnoringCachedData progress:^(NSInteger number) {
+            NSLog(@"======== %ld%%", number);
+        } completionHandler:^(NSURL * _Nullable filePath, NSError * _Nullable error) {
+            self.hasLatestHosts = YES;
+            if (error) {
+                NSLog(@"======== 文件下载失败: %@", error);
+            } else {
+                
+                NSData *data = [NSData dataWithContentsOfURL:filePath];
+                
+                NSString *documentDir = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+                NSString *targetFilePath = [documentDir stringByAppendingPathComponent:@"PicNet.json"];
+                BOOL isSuccess = [data writeToFile:targetFilePath atomically:YES];
+                if (isSuccess) {
+                    NSLog(@"======== 文件下载成功");
+                } else {
+                    NSLog(@"======== 文件下载成功, 写入本地失败");
+                }
+                
+                NSError *jsonError = nil;
+                NSDictionary *dataDic = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:&jsonError];
+                NSLog(@"======== 数据解析成功: %@", dataDic);
+                [self paraseHostModelsFromFile:filePath.path];
+            }
+            PPIsBlockExecute(completion, self.hostModels, error);
+        }];
     }];
 }
 
@@ -327,14 +335,50 @@ singleton_implementation(AppTool)
     jsonDic[@"hosts"] = hosts;
     NSData *jsonData = [NSJSONSerialization dataWithJSONObject:jsonDic options:NSJSONWritingPrettyPrinted error:nil];
     BOOL isSuccess = [jsonData writeToFile:targetFilePath atomically:YES];
-    if (isSuccess) {
+    if (!isSuccess) {
+        PPIsBlockExecute(finished, NO, @"添加失败");
+        return;
+    }
+        
+    // 更新到服务器
+    NSError *createFileError = nil;
+    LCFile *jsonFile = [LCFile fileWithLocalPath:targetFilePath error:&createFileError];
+    if (createFileError) {
+        NSLog(@"======== 创建文件失败: %@", createFileError);
+        PPIsBlockExecute(finished, NO, @"添加失败");
+        return;
+    }
+    // 更新到服务器
+    [jsonFile uploadWithOption:LCFileUploadOptionIgnoringCachingData progress:^(NSInteger number) {
+        NSLog(@"======== 上传PicNet.json进度: %ld%%", number);
+    } completionHandler:^(BOOL succeeded, NSError * _Nullable error) {
+        
+        if (error) {
+            NSLog(@"======== 上传PicNet.json失败: %@", error);
+            PPIsBlockExecute(finished, NO, @"添加失败");
+            return;
+        }
+        
+        NSLog(@"======== 上传PicNet.json文件成功, ObjectId: %@, 文件Url: %@", jsonFile.objectId, jsonFile.url);
+        // 更新FileObject表
+        LCQuery *query = [LCQuery queryWithClassName:@"FileObject"];
+        [query getObjectInBackgroundWithId:@"683ef63f2b2fd8404bd92338" block:^(LCObject *todo, NSError *error) {
+            [todo setObject:jsonFile forKey:@"file"];
+            
+            [todo saveInBackgroundWithBlock:^(BOOL succeeded, NSError * _Nullable error) {
+                if (succeeded) {
+                    NSLog(@"======== FileObject 更新文件字段成功！");
+                }
+            }];
+        }];
+        
+        
+        // 本地重新解析
         [self paraseHostModelsFromFile:targetFilePath];
         [self refreshCurrentHostModel];
         PPIsBlockExecute(finished, YES, nil);
-    } else {
-        PPIsBlockExecute(finished, NO, @"添加失败");
-    }
-    
+        
+    }];
 }
 
 #pragma mark - SDWebImage

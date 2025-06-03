@@ -10,6 +10,7 @@
 #import "ContentViewController.h"
 #import "PicClassifyTableView.h"
 #import "NetListViewController.h"
+#import <LeanCloudObjc/Foundation.h>
 
 @interface HomeViewController () <PicClassifyTableViewActionDelegate>
 
@@ -159,28 +160,26 @@
 }
 
 - (void)viewDidLoad {
-    
-    
-    if (!AppTool.sharedAppTool.hasLatestHosts) {
-        
-        [AppTool.sharedAppTool requestPicNetJson:^(NSArray<PicNetModel *> * _Nonnull models, NSError * _Nonnull error) {
-            
-            [super viewDidLoad];
-            
-            [[TKGestureLockManager sharedInstance] showGestureLockWindow];
-            
-            MJWeakSelf
-            [self cw_registerShowIntractiveWithEdgeGesture:NO transitionDirectionAutoBlock:^(CWDrawerTransitionDirection direction) {
-                if (direction == CWDrawerTransitionFromLeft) {
-                    [weakSelf selectNetHost:nil];
-                }
-            }];
-            
-            [self loadAllTags];
-        }];
-        
+    if (AppTool.sharedAppTool.hasLatestHosts) {
+        [super viewDidLoad];
         return;
     }
+    
+    [AppTool.sharedAppTool requestPicNetJson:^(NSArray<PicNetModel *> * _Nonnull models, NSError * _Nonnull error) {
+        
+        [super viewDidLoad];
+        
+        [[TKGestureLockManager sharedInstance] showGestureLockWindow];
+        
+        MJWeakSelf
+        [self cw_registerShowIntractiveWithEdgeGesture:NO transitionDirectionAutoBlock:^(CWDrawerTransitionDirection direction) {
+            if (direction == CWDrawerTransitionFromLeft) {
+                [weakSelf selectNetHost:nil];
+            }
+        }];
+        
+        [self loadAllTags];
+    }];
 }
 
 - (void)viewDidResize {
