@@ -718,6 +718,7 @@
 }
 
 - (void)clearAllFiles {
+    [self.browser hide];
     PDBlockSelf
     NSString *message = self.isEditing ? @"确定删除选中的文件吗? 该过程不可逆" : @"确定删除所有文件吗? 该过程不可逆";
     [self showAlertWithTitle:@"提醒" message:message confirmTitle:@"确定" confirmHandler:^(UIAlertAction * _Nonnull action) {
@@ -1199,24 +1200,24 @@
                         [self viewPicFile:fileModel indexPath:[NSIndexPath indexPathForItem:self.lastViewIndex inSection:0] contentView:self.contentView];
                     }
                 }
-            }
-            if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputEscape]) {//esc
+            } else if (key.keyCode == UIKeyboardHIDUsageKeyboardDeleteOrBackspace) {
+                [self.browser hide];
+                [self.navigationController popViewControllerAnimated:YES];
+            } else if (key.keyCode == UIKeyboardHIDUsageKeyboardDeleteForward || key.keyCode == UIKeyboardHIDUsageKeypadPeriod) { // 删除键
+                [self clearAllFiles];
+            } else if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputEscape]) {//esc
                 didHandleEvent = YES;
                 [self.browser hide];
-            }
-            if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputLeftArrow]) {//左箭头
+            } else if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputLeftArrow]) {//左箭头
                                                                                         //                didHandleEvent = YES;
                 self.browser.currentPage = MAX(self.browser.currentPage - 1, 0);
-            }
-            if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputRightArrow]) {//右箭头
+            } else if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputRightArrow]) {//右箭头
                                                                                          //                didHandleEvent = YES;
                 self.browser.currentPage = MIN(self.browser.currentPage + 1, self.imgsList.count);
-            }
-            if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputUpArrow]) { // 上箭头
+            } else if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputUpArrow]) { // 上箭头
                 didHandleEvent = YES;
                 [self.browser hide];
-            }
-            if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputDownArrow]) { // 上箭头
+            } else if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputDownArrow]) { // 上箭头
                 didHandleEvent = YES;
                 [self.browser hide];
             }

@@ -50,6 +50,8 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    NSLog(@"======== %@ viewDidLoad", NSStringFromClass(self.class));
+    
     if ([self respondsToSelector:@selector(edgesForExtendedLayout)]) {
         self.edgesForExtendedLayout = UIRectEdgeNone;
     }

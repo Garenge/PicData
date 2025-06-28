@@ -9,6 +9,7 @@
 #import "AppDelegate.h"
 #import <FirebaseCore/FirebaseCore.h>
 #import <LeanCloudObjc/Foundation.h>
+#import "PDWindow.h"
 
 @interface AppDelegate ()
 
@@ -47,7 +48,7 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     
-    self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+    self.window = [[PDWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
 
     self.window.windowScene.sizeRestrictions.minimumSize = CGSizeMake(400, 600);
     self.window.windowScene.sizeRestrictions.maximumSize = CGSizeMake(800, 600);

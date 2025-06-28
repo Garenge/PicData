@@ -10,6 +10,7 @@
 #import "SettingPathViewController.h"
 #import "SharedListViewController.h"
 #import <FirebaseStorage/FirebaseStorage-Swift.h>
+#import "PDTestViewController.h"
 
 @interface SettingViewController () <UITableViewDelegate, UITableViewDataSource>
 
@@ -113,7 +114,10 @@
     [SettingOperationModel ModelWithName:@"下载DataDemo.db" value:self.DataDemoDBDwonloadedPath.length > 0 ? @"已下载" : @"未下载" func:@"downloadDataDemoDB:"],
     ];
     [operationModels addObject:dataModel];
-
+    
+    SettingOperationModel *testModel = [SettingOperationModel ModelWithName:@"测试" value:@"" func:@"doTest:"];
+    [operationModels addObject:testModel];
+    
     return operationModels;
 }
 
@@ -488,6 +492,11 @@ static NSString *identifier = @"identifier";
             });
         }
     });
+}
+
+- (void)doTest:(UIView *)sender {
+    PDTestViewController *vc = [[PDTestViewController alloc] init];
+    [self.navigationController pushViewController:vc animated:YES];
 }
 
 #pragma mark - notification
