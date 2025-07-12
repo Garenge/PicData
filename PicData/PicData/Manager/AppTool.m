@@ -295,14 +295,18 @@ singleton_implementation(AppTool)
                 BOOL isSuccess = [data writeToFile:targetFilePath atomically:YES];
                 if (isSuccess) {
                     NSLog(@"======== 文件下载成功");
+                    NSError *jsonError = nil;
+                    NSDictionary *dataDic = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:&jsonError];
+                    NSLog(@"======== 数据解析成功: %@", dataDic);
+                    [self paraseHostModelsFromFile:filePath.path];
                 } else {
                     NSLog(@"======== 文件下载成功, 写入本地失败");
+                    NSString *documentDir = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+                    NSString *targetFilePath = [documentDir stringByAppendingPathComponent:@"PicNet.json"];
+                    [self paraseHostModelsFromFile:targetFilePath];
                 }
                 
-                NSError *jsonError = nil;
-                NSDictionary *dataDic = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:&jsonError];
-                NSLog(@"======== 数据解析成功: %@", dataDic);
-                [self paraseHostModelsFromFile:filePath.path];
+                
             }
             PPIsBlockExecute(completion, self.hostModels, error);
         }];
@@ -333,7 +337,7 @@ singleton_implementation(AppTool)
         hosts[index] = mutableDic;
     }];
     jsonDic[@"hosts"] = hosts;
-    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:jsonDic options:NSJSONWritingPrettyPrinted error:nil];
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:jsonDic options:NSJSONWritingPrettyPrinted | NSJSONWritingWithoutEscapingSlashes error:nil];
     BOOL isSuccess = [jsonData writeToFile:targetFilePath atomically:YES];
     if (!isSuccess) {
         PPIsBlockExecute(finished, NO, @"添加失败");
