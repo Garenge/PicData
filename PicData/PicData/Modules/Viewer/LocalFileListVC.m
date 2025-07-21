@@ -393,7 +393,8 @@
             ViewerFileSModel *tempModel = sharedFileNameList[index];
             if ([PPFileManager isFileTypePicture:tempModel.fileName.pathExtension]) {
                 UIImage *image = [UIImage imageWithContentsOfFile:[weakSelf.targetFilePath stringByAppendingPathComponent:tempModel.fileName]];
-                return image;
+                NSData *data = UIImageJPEGRepresentation(image, 0.6);
+                return [UIImage imageWithData:data];
             } else {
                 return nil;
             }
