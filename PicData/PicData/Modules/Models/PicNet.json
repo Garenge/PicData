@@ -51,7 +51,7 @@
             "searchEncode": true,
             "mark": "hitxhot",
             "tips": "建议开启代理",
-            "prepared": true,
+            "prepared": false,
         },
         {
             "title" : "https://meirentu.cc",
@@ -73,7 +73,7 @@
             "searchEncode": true,
             "mark": "美人图",
             "tips": "需开启代理",
-            "prepared": true,
+            "prepared": false,
         },
         {
             "title" : "https://buondua.com",
