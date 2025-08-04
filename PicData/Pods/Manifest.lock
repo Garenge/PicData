@@ -130,10 +130,14 @@ PODS:
     - SDWebImage (~> 5.0)
   - PPCatalystTool (1.0.4)
   - PPCustomAsyncOperation (0.1.1)
-  - PPSocket (0.1.0):
+  - PPSocket (0.1.1):
     - CocoaAsyncSocket
     - PPCustomAsyncOperation
-  - PPToolKit (0.1.3)
+  - PPToolKit (0.1.6):
+    - Masonry
+    - PPToolKit/Core (= 0.1.6)
+  - PPToolKit/Core (0.1.6):
+    - Masonry
   - PromisesObjC (2.4.0)
   - RecaptchaInterop (100.0.0)
   - SDWebImage (5.12.5):
@@ -173,7 +177,7 @@ DEPENDENCIES:
   - PicDataSDK
   - PPCatalystTool
   - PPCustomAsyncOperation
-  - PPSocket (from `../../../SDK/PPSocket`)
+  - PPSocket
   - PPToolKit
   - SDWebImage (~> 5.0)
   - SSZipArchive
@@ -208,6 +212,7 @@ SPEC REPOS:
     - PicDataSDK
     - PPCatalystTool
     - PPCustomAsyncOperation
+    - PPSocket
     - PPToolKit
   trunk:
     - CWLateralSlide
@@ -224,8 +229,6 @@ SPEC REPOS:
     - YYCategories
 
 EXTERNAL SOURCES:
-  PPSocket:
-    :path: "../../../SDK/PPSocket"
   YYImage:
     :git: https://github.com/QiuYeHong90/YYImage.git
 
@@ -261,8 +264,8 @@ SPEC CHECKSUMS:
   PicDataSDK: ce06b62ef529ea6a15d971f7a0b95aaa2d4fe88a
   PPCatalystTool: 8c08ff72f6f79de7b37f4f04b5c0f346c535a65e
   PPCustomAsyncOperation: a9901452d6d5724d2c075535f7a16198a23eb8ee
-  PPSocket: f12cbad08a94892ea0fb1fb47db1e2b2834fe783
-  PPToolKit: ca27551c8173e7c8b2050af927056ec9ae44d4b9
+  PPSocket: e3b5e0c8a045fc979e1a22e35e3679aa2a2e371e
+  PPToolKit: 3ca94dab5d1eeeaaa6e31c908fd8dd72457305ae
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   RecaptchaInterop: 7d1a4a01a6b2cb1610a47ef3f85f0c411434cb21
   SDWebImage: 0905f1b7760fc8ac4198cae0036600d67478751e
@@ -274,6 +277,6 @@ SPEC CHECKSUMS:
   YYCategories: 6bcd4314c6661a561410dce4a793379ebd306abd
   YYImage: 20ec986d18a8d0ad421619d166a9e628097e2433
 
-PODFILE CHECKSUM: 7b788df073ec8c7085840e2451014fe87bf3db25
+PODFILE CHECKSUM: 1208bea8e8103a72e3cee2b5a6a00b2d156618cb
 
 COCOAPODS: 1.16.2

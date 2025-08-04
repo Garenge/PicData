@@ -28,7 +28,7 @@ target 'PicData' do
   pod 'PPCatalystTool'
   pod 'PPToolKit'
   pod 'PPCustomAsyncOperation'
-  pod 'PPSocket', :path => '../../../SDK/PPSocket'
+  pod 'PPSocket'#, :path => '../../../SDK/PPSocket'
   # Pods for PicData
 
 

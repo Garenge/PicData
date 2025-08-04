@@ -63,6 +63,10 @@ NS_ASSUME_NONNULL_BEGIN
 /// 一键枚举, for循环, index
 - (void)pp_enumeration:(void(^)(ObjectType element, NSInteger index, NSInteger totalCount))block;
 
+/// 快速循环N次
++ (void)pp_quickForTimes:(NSInteger)forTimes block:(void(^)(NSInteger index, NSInteger totalCount))block;
+
+
 @end
 
 @interface NSMutableArray <ObjectType> (ppEx)

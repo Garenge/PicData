@@ -218,6 +218,15 @@
     }
 }
 
+/// 快速循环N次
++ (void)pp_quickForTimes:(NSInteger)forTimes block:(void (^)(NSInteger, NSInteger))block {
+    if (!block) { return; }
+    
+    for (NSInteger index = 0; index < forTimes; index ++) {
+        block(index, forTimes);
+    }
+}
+
 @end
 
 @implementation NSMutableArray (ppEx)
