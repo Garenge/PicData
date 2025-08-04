@@ -100,7 +100,7 @@
 
 #endif
 
-    [AppTool shareWithActivityItems:@[fileURL] sourceView:sender completionWithItemsHandler:^(UIActivityType  _Nullable activityType, BOOL completed, NSArray * _Nullable returnedItems, NSError * _Nullable activityError) {
+    [AppTool shareWithActivityItems:@[fileURL] needNewWindow:YES sourceView:sender completionWithItemsHandler:^(UIActivityType  _Nullable activityType, BOOL completed, NSArray * _Nullable returnedItems, NSError * _Nullable activityError) {
         if (completed) {
             NSLog(@"分享成功!");
         } else {

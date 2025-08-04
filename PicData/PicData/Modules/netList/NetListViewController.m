@@ -53,6 +53,28 @@
 }
 
 - (void)loadMainView {
+
+    self.view.backgroundColor = UIColor.whiteColor;
+
+    UIView *bottomBar = [UIView pp_view];
+    [self.view addSubview:bottomBar];
+    [bottomBar mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.left.right.mas_equalTo(0);
+        make.bottom.equalTo(self.view.mas_bottomMargin);
+        make.height.mas_equalTo(56);
+    }];
+
+    UIButton *exportButton = [UIButton pp_buttonWithTitle:@"导出数据" titleColor:ThemeColor titleFont:[UIFont systemFontOfSize:14]];
+    [exportButton addTarget:self action:@selector(doExportDataBtnAction:) forControlEvents:UIControlEventTouchUpInside];
+
+    [bottomBar addSubview:exportButton];
+    [exportButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.left.mas_equalTo(16);
+        make.height.mas_equalTo(36);
+        make.centerY.equalTo(bottomBar);
+        make.width.mas_equalTo((self.targetWidth > 0 ? self.targetWidth : 300) - 32);
+    }];
+
     UITableView *tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleGrouped];
     tableView.delegate = self;
     tableView.dataSource = self;
@@ -60,10 +82,20 @@
     self.tableView = tableView;
 
     [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.left.topMargin.bottomMargin.mas_equalTo(0);
+        make.left.topMargin.mas_equalTo(0);
+        make.bottom.equalTo(bottomBar.mas_top);
         make.width.mas_equalTo(self.targetWidth > 0 ? self.targetWidth : 300);
     }];
 }
+
+#pragma mark - action
+
+- (void)doExportDataBtnAction:(UIButton *)sender {
+    [self dismissViewControllerAnimated:YES completion:nil];
+    PPIsBlockExecute(self.didShareConfigFile);
+}
+
+#pragma mark - UITableViewDelegate, UITableViewDataSource
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     return self.dataList.count;

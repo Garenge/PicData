@@ -79,6 +79,13 @@
     hostVC.refreshBlock = ^{
         [weakSelf loadAllTags];
     };
+    hostVC.didShareConfigFile = ^{
+        [AppTool shareWithActivityItems:@[
+            [NSURL fileURLWithPath:[AppTool sharedAppTool].hostLocalPath]
+        ] needNewWindow:YES sourceView:self.view completionWithItemsHandler:^(UIActivityType  _Nullable activityType, BOOL completed, NSArray * _Nullable returnedItems, NSError * _Nullable activityError) {
+
+        }];
+    };
     CGFloat distance = MIN(self.view.mj_w * 0.75, 400);
     hostVC.targetWidth = distance;
     CWLateralSlideConfiguration *configuration = [CWLateralSlideConfiguration configurationWithDistance:distance maskAlpha:0.4 scaleY:1.0 direction:CWDrawerTransitionFromLeft backImage:nil];

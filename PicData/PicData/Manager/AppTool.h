@@ -25,6 +25,8 @@ singleton_interface(AppTool)
 @property (nonatomic, strong, readonly) NSArray <PicNetModel *> *hostModels;
 /// 是否已经更新最新的站点
 @property (nonatomic, assign) BOOL hasLatestHosts;
+/// 站点保存到本地数据
+@property (nonatomic, strong, readonly) NSString *hostLocalPath;
 /// 更新最新的站点, 建议阻塞UI
 - (void)requestPicNetJson:(void(^)(NSArray <PicNetModel *> *models, NSError *error))completion;
 
@@ -38,8 +40,14 @@ singleton_interface(AppTool)
 
 /// 分享app中的文件,区分是iOS端或者mac端
 + (void)shareFileWithURLs:(NSArray <NSURL *>*)urls sourceView:(UIView *)sourceView completionWithItemsHandler:(UIActivityViewControllerCompletionWithItemsHandler)completionWithItemsHandler;
+
 /// 调用系统分享
-+ (void)shareWithActivityItems:(NSArray *)ctivityItems sourceView:(UIView *)sourceView completionWithItemsHandler:(nonnull UIActivityViewControllerCompletionWithItemsHandler)completionWithItemsHandler;
+/// - Parameters:
+///   - ctivityItems: 分享内容
+///   - needNewWindow: default is NO
+///   - sourceView: 大屏幕用, 参考view
+///   - completionWithItemsHandler: 回调
++ (void)shareWithActivityItems:(NSArray *)ctivityItems needNewWindow:(BOOL)needNewWindow sourceView:(UIView *)sourceView completionWithItemsHandler:(nonnull UIActivityViewControllerCompletionWithItemsHandler)completionWithItemsHandler;
 
 /// 初始化监控
 + (void)setupPerformanceMonitor;

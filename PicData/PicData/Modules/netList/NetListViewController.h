@@ -15,6 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) CGFloat targetWidth;
 @property (nonatomic, copy) void(^refreshBlock)(void);
 
+@property (nonatomic, copy) void(^didShareConfigFile)(void);
+
 @end
 
 NS_ASSUME_NONNULL_END

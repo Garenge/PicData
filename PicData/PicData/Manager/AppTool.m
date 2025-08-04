@@ -8,6 +8,7 @@
 
 #import "AppTool.h"
 #import <LeanCloudObjc/Foundation.h>
+#import <PPToolKit/PPToolKit.h>
 
 #define KHOSTURLKEY @"KHOSTURLKEY"
 
@@ -119,11 +120,19 @@ singleton_implementation(AppTool)
 #endif
     }
 
-    [self shareWithActivityItems:urls sourceView:sourceView completionWithItemsHandler:completionWithItemsHandler];
+    [self shareWithActivityItems:urls needNewWindow:YES sourceView:sourceView completionWithItemsHandler:completionWithItemsHandler];
+
+//    if ([ctivityItems.firstObject isKindOfClass:[NSURL class]]) {
+//        NSURL *urlObjc = ctivityItems.firstObject;
+//        NSArray *targetPathExtension = @[@"jpg", @"jpeg", @"png"];
+//        if ([targetPathExtension containsObject:urlObjc.absoluteString.lastPathComponent.pathExtension]) {
+//
+//        }
+//    }
 }
 
 /// 调用系统分享
-+ (void)shareWithActivityItems:(NSArray *)ctivityItems sourceView:(UIView *)sourceView completionWithItemsHandler:(nonnull UIActivityViewControllerCompletionWithItemsHandler)completionWithItemsHandler {
++ (void)shareWithActivityItems:(NSArray *)ctivityItems needNewWindow:(BOOL)needNewWindow sourceView:(UIView *)sourceView completionWithItemsHandler:(UIActivityViewControllerCompletionWithItemsHandler)completionWithItemsHandler {
 
 //    UIViewController *topRootViewController = [AppTool getAppKeyWindow].rootViewController;
     /** 划重点
@@ -136,18 +145,13 @@ singleton_implementation(AppTool)
 
     UIViewController *topRootViewController = UIApplication.sharedApplication.windows.firstObject.rootViewController;
     UIWindow *tmpWindow;
-
-    if ([ctivityItems.firstObject isKindOfClass:[NSURL class]]) {
-        NSURL *urlObjc = ctivityItems.firstObject;
-        NSArray *targetPathExtension = @[@"jpg", @"jpeg", @"png"];
-        if ([targetPathExtension containsObject:urlObjc.absoluteString.lastPathComponent.pathExtension]) {
-            topRootViewController = [[UIViewController alloc] init];
-            tmpWindow = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-            topRootViewController.view.backgroundColor = [UIColor clearColor];
-            tmpWindow.windowLevel = UIWindowLevelAlert - 1;
-            tmpWindow.rootViewController = topRootViewController;
-            [tmpWindow makeKeyAndVisible];
-        }
+    if (needNewWindow) {
+        topRootViewController = [[UIViewController alloc] init];
+        tmpWindow = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+        topRootViewController.view.backgroundColor = [UIColor clearColor];
+        tmpWindow.windowLevel = UIWindowLevelAlert - 1;
+        tmpWindow.rootViewController = topRootViewController;
+        [tmpWindow makeKeyAndVisible];
     }
 
     UIActivityViewController *activityVC = [[UIActivityViewController alloc] initWithActivityItems:ctivityItems applicationActivities:nil];
@@ -260,6 +264,11 @@ singleton_implementation(AppTool)
     }
 }
 
+- (NSString *)hostLocalPath {
+    NSString *filePath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/PicNet.json"];
+    return filePath;
+}
+
 - (void)requestPicNetJson:(void (^)(NSArray<PicNetModel *> * _Nonnull, NSError * _Nonnull))completion {
     LCFile *file = [LCFile fileWithObjectId:@"683c56632b2fd8404bd8eaf6" url:@"http://lc-zt905pRz.cn-n1.lcfile.com/7wa2W00mipiig8Et2Tg5G3WG2KdcoBcJ/PicNet.json"];
     [file downloadWithOption:LCFileDownloadOptionIgnoringCachedData progress:^(NSInteger number) {
@@ -270,6 +279,9 @@ singleton_implementation(AppTool)
             NSLog(@"======== 文件下载失败: %@", error);
         } else {
             NSLog(@"======== 文件下载成功");
+
+            [NSFileManager.defaultManager doReplaceFile:[self hostLocalPath] withNewFilePath:filePath.path];
+
             NSData *data = [NSData dataWithContentsOfURL:filePath];
             NSError *jsonError = nil;
             NSDictionary *dataDic = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:&jsonError];

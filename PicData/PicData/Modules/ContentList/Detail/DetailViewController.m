@@ -668,7 +668,7 @@
         [actions addObject:share];
 #else
         UIAction *share = [UIAction actionWithTitle:@"直接分享" image:nil identifier:nil handler:^(__kindof UIAction * _Nonnull action) {
-            [AppTool shareWithActivityItems:@[cell.conImgView.image] sourceView:cell.conImgView completionWithItemsHandler:^(UIActivityType  _Nullable activityType, BOOL completed, NSArray * _Nullable returnedItems, NSError * _Nullable activityError) {
+            [AppTool shareWithActivityItems:@[cell.conImgView.image] needNewWindow:YES sourceView:cell.conImgView completionWithItemsHandler:^(UIActivityType  _Nullable activityType, BOOL completed, NSArray * _Nullable returnedItems, NSError * _Nullable activityError) {
             }];
         }];
         [actions addObject:share];
