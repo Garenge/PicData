@@ -12,7 +12,8 @@
 
 @interface PicBrowserToolViewHandler()
 
-@property (nonatomic, strong) UIView *operationView;
+@property (nonatomic, strong) UIStackView *operationView;
+@property (nonatomic, strong) UIButton *showBtn;
 @property (nonatomic, strong) UIButton *saveToAlbumeBtn;
 @property (nonatomic, strong) UIButton *shareToOtherBtn;
 
@@ -32,7 +33,7 @@
 @synthesize yb_totalPage = _yb_totalPage;
 
 - (CGSize)operationViewSize {
-    CGSize viewSize = CGSizeMake(92, 44);
+    CGSize viewSize = CGSizeMake(44 * 3, 44);
     return viewSize;
 }
 
@@ -65,6 +66,18 @@
 }
 
 #pragma mark - event
+
+- (void)setEyeShow:(BOOL)isShow {
+    self.showBtn.selected = !isShow;
+    PPIsBlockExecute(self.didClickedEyeShowBtnBlock, !self.showBtn.selected);
+}
+
+- (void)topViewShowAction:(UIButton *)sender {
+    sender.selected = !sender.selected;
+    
+    PPIsBlockExecute(self.didClickedEyeShowBtnBlock, !sender.selected);
+}
+
 - (void)savePicToAlbumAction:(UIButton *)sender {
     // 拿到当前的数据对象（此案例都是图片）
     YBIBImageData *data = (YBIBImageData *)self.yb_currentData();
@@ -120,31 +133,66 @@
     return _topView;
 }
 
+- (UIButton *)showBtn {
+    if (nil == _showBtn) {
+        _showBtn = [UIButton pp_buttonWithImage:UIImageMakeSystem(@"eye")];
+        [_showBtn setImage:UIImageMakeSystem(@"eye.slash") forState:UIControlStateSelected];
+        _showBtn.backgroundColor = UIColor.clearColor;
+        _showBtn.tintColor = ThemeColor;
+        [_showBtn addTarget:self action:@selector(topViewShowAction:) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _showBtn;
+}
+
+- (UIButton *)shareToOtherBtn {
+    if (nil == _shareToOtherBtn) {
+        _shareToOtherBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+#if TARGET_OS_MACCATALYST
+        [_shareToOtherBtn setImage:[UIImage systemImageNamed:@"square.grid.2x2.fill"] forState:UIControlStateNormal];
+#else
+        [_shareToOtherBtn setImage:[UIImage systemImageNamed:@"share"] forState:UIControlStateNormal];
+#endif
+        _shareToOtherBtn.backgroundColor = UIColor.clearColor;
+        _shareToOtherBtn.tintColor = ThemeColor;
+        [_shareToOtherBtn addTarget:self action:@selector(sharePicToOtherAction:) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _shareToOtherBtn;
+}
+
+- (UIButton *)saveToAlbumeBtn {
+    if (nil == _saveToAlbumeBtn) {
+        _saveToAlbumeBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+        [_saveToAlbumeBtn setImage:[UIImage systemImageNamed:@"square.and.arrow.down"] forState:UIControlStateNormal];
+        _saveToAlbumeBtn.backgroundColor = UIColor.clearColor;
+        _saveToAlbumeBtn.tintColor = ThemeColor;
+        [_saveToAlbumeBtn addTarget:self action:@selector(savePicToAlbumAction:) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _saveToAlbumeBtn;
+}
+
 - (UIView *)operationView {
     if (nil == _operationView) {
         CGSize size = [self operationViewSize];
-        _operationView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, size.width, size.height)];
+        
+        _operationView = [UIStackView pp_viewWithAxis:UILayoutConstraintAxisHorizontal];
+        _operationView.frame = CGRectMake(0, 0, size.width, size.height);
+        _operationView.distribution = UIStackViewDistributionFillEqually;
         _operationView.backgroundColor = UIColor.clearColor;
         
-        UIButton *shareToOtherBtn = [UIButton buttonWithType:UIButtonTypeCustom];
-        shareToOtherBtn.frame = CGRectMake(0, 0, size.height, size.height);
-#if TARGET_OS_MACCATALYST
-        [shareToOtherBtn setImage:[UIImage imageNamed:@"show"] forState:UIControlStateNormal];
-#else
-        [shareToOtherBtn setImage:[UIImage imageNamed:@"share"] forState:UIControlStateNormal];
-#endif
-        shareToOtherBtn.backgroundColor = UIColor.clearColor;
-        [shareToOtherBtn addTarget:self action:@selector(sharePicToOtherAction:) forControlEvents:UIControlEventTouchUpInside];
-        [_operationView addSubview:shareToOtherBtn];
-        self.shareToOtherBtn = shareToOtherBtn;
+        [_operationView addArrangedSubview:self.showBtn];
+        [self.showBtn mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.height.mas_equalTo(size.height);
+        }];
         
-        UIButton *saveToAlbumeBtn = [UIButton buttonWithType:UIButtonTypeCustom];
-        saveToAlbumeBtn.frame = CGRectMake(size.width - size.height, 0, size.height, size.height);
-        [saveToAlbumeBtn setImage:[UIImage imageNamed:@"save"] forState:UIControlStateNormal];
-        saveToAlbumeBtn.backgroundColor = UIColor.clearColor;
-        [saveToAlbumeBtn addTarget:self action:@selector(savePicToAlbumAction:) forControlEvents:UIControlEventTouchUpInside];
-        [_operationView addSubview:saveToAlbumeBtn];
-        self.saveToAlbumeBtn = saveToAlbumeBtn;
+        [_operationView addArrangedSubview:self.shareToOtherBtn];
+        [self.shareToOtherBtn mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.height.mas_equalTo(size.height);
+        }];
+        
+        [_operationView addArrangedSubview:self.saveToAlbumeBtn];
+        [self.saveToAlbumeBtn mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.height.mas_equalTo(size.height);
+        }];
     }
     return _operationView;
 }

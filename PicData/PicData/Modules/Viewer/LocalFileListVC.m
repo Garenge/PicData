@@ -1134,6 +1134,12 @@
         make.bottom.equalTo(rightBtn.mas_top).offset(-40);
     }];
     
+    handler.didClickedEyeShowBtnBlock = ^(BOOL isShow) {
+        leftBtn.hidden = !isShow;
+        rightBtn.hidden = !isShow;
+        autoPlayBtn.hidden = !isShow;
+    };
+    [handler setEyeShow:NO];
 }
 
 #if TARGET_OS_MACCATALYST
