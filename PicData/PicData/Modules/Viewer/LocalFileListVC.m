@@ -13,7 +13,6 @@
 
 @interface LocalFileListVC () <UICollectionViewDelegate, UICollectionViewDataSource, YBImageBrowserDelegate>
 
-@property (nonatomic, strong) UIBarButtonItem *backItem;
 @property (nonatomic, strong) ViewerContentView *contentView;
 @property (nonatomic, strong) NSMutableArray <ViewerFileSModel *>*fileNamesList;
 @property (nonatomic, strong) NSMutableArray *imgsList;
@@ -118,9 +117,8 @@
     
     NSMutableArray *leftBarButtonItems = [NSMutableArray array];
     if (self.navigationController.viewControllers.count > 1) {
-        UIBarButtonItem *backItem = [[UIBarButtonItem alloc] initWithTitle:@"返回" style:UIBarButtonItemStyleDone target:self action:@selector(backAction:)];
+        UIBarButtonItem *backItem = [[UIBarButtonItem alloc] initWithTitle:@"返回" style:UIBarButtonItemStyleDone target:self action:@selector(backAction)];
         [leftBarButtonItems addObject:backItem];
-        self.backItem = backItem;
     }
     // mac端也允许整理按钮, 加警告框即可
     UIBarButtonItem *arrangeItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"ellipsis"] style:UIBarButtonItemStyleDone target:self action:@selector(arrangeItemClickAction:)];
@@ -164,8 +162,7 @@
     [self.navigationItem setRightBarButtonItems:items animated:YES];//.rightBarButtonItems = items;
 }
 
-- (void)backAction:(UIBarButtonItem *)sender {
-    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(refreshLoadData:) object:@(YES)];
+- (void)backAction {
     [self.navigationController popViewControllerAnimated:YES];
 }
 
@@ -325,8 +322,12 @@
     
     self.receivePicDownCompleteCount ++;
     
-    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(refreshLoadData:) object:@(YES)];
-    [self performSelector:@selector(refreshLoadData:) withObject:@(YES) afterDelay:1];
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self refreshLoadData:YES];
+    });
     
     if (self.receivePicDownCompleteCount >= 4) {
         self.receivePicDownCompleteCount -= 4;
@@ -867,7 +868,7 @@
                 [weakSelf.contentView.mj_header beginRefreshing];
             } else {
                 PPIsBlockExecute(weakSelf.didClearFolderBlock);
-                [weakSelf backAction:weakSelf.backItem];
+                [weakSelf backAction];
             }
         } else {
             // [MBProgressHUD showInfoOnView:weakSelf.view WithStatus:@"删除失败" afterDelay:1];
@@ -974,7 +975,7 @@
                 if (needBack) {
                     
                     [MBProgressHUD showInfoOnView:AppTool.getAppKeyWindow WithStatus:@"已删除"];
-                    [weakSelf backAction:weakSelf.backItem];
+                    [weakSelf backAction];
                 } else {
                     NSMutableArray *actions = [NSMutableArray array];
                     [actions addObject:[UIAlertAction actionWithTitle:@"好的" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
@@ -1306,7 +1307,7 @@
                 }
             } else if (key.keyCode == UIKeyboardHIDUsageKeyboardDeleteOrBackspace) {
                 [self.browser hide];
-                [self backAction:self.backItem];
+                [self backAction];
             } else if (key.keyCode == UIKeyboardHIDUsageKeyboardDeleteForward || key.keyCode == UIKeyboardHIDUsageKeypadPeriod) { // 删除键
                 [self clearAllFiles];
             } else if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputEscape]) {//esc
