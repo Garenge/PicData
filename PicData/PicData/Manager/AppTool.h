@@ -9,8 +9,12 @@
 #import <Foundation/Foundation.h>
 #import "PicNetModel.h"
 #import "PicClassModel.h"
+#import "AppDelegate.h"
+#import <LeanCloudObjc/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
+
+#define PPAppdelegate ((AppDelegate *)[UIApplication sharedApplication].delegate)
 
 #define NotificationNameClearedAllFiles @"NotificationNameClearedAllFiles"
 #define NotificationNameInitHostModelsFailed @"NotificationNameInitHostModelsFailed"
@@ -26,8 +30,17 @@ singleton_interface(AppTool)
 @property (nonatomic, strong, readonly) NSArray <PicNetModel *> *hostModels;
 /// 是否已经更新最新的站点
 @property (nonatomic, assign) BOOL hasLatestHosts;
+
+#pragma mark LeanCloud
+/// 当前登录的用户 (匿名用户)
+@property (nonatomic, strong) LCUser *currentAnonymousUser;
+- (void)requestLeanCloudInit;
+/// 上传站点文件, json
+- (void)requestToUploadPicNetJsonFile:(NSString *)jsonFile completion:(void (^)(BOOL isSuccess, NSError * _Nullable error))completion;
+/// 下载站点文件, json
+- (void)requestPicNetJsonFile:(void (^)(NSString *filePath, NSError * _Nullable error))completion;
 /// 更新最新的站点, 建议阻塞UI
-- (void)requestPicNetJson:(void(^)(NSArray <PicNetModel *> *models, NSError *error))completion;
+- (void)requestPicNetJson:(void(^)(NSArray <PicNetModel *> *models, NSError *_Nullable error))completion;
 
 @property (nonatomic, strong, readonly) NSArray <NSString *> *searchKeys;
 

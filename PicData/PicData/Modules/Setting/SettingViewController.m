@@ -109,10 +109,11 @@
     ];
     [operationModels addObject:socketModel];
     
-    SettingOperationModel *dataModel = [SettingOperationModel ModelWithName:@"数据库" value:@"" func:@""];
+    SettingOperationModel *dataModel = [SettingOperationModel ModelWithName:@"⚠️数据⚠️" value:@"" func:@""];
     dataModel.subOperationModels = @[
+        [SettingOperationModel ModelWithName:@"备份PicNet.json" value:@"" func:@"doBackupPicNetJsonFile:"],
         [SettingOperationModel ModelWithName:@"导出数据库" value:@"" func:@"shareDatabase:"],
-    [SettingOperationModel ModelWithName:@"下载DataDemo.db" value:self.DataDemoDBDwonloadedPath.length > 0 ? @"已下载" : @"未下载" func:@"downloadDataDemoDB:"],
+        [SettingOperationModel ModelWithName:@"下载DataDemo.db" value:self.DataDemoDBDwonloadedPath.length > 0 ? @"已下载" : @"未下载" func:@"downloadDataDemoDB:"],
     ];
     [operationModels addObject:dataModel];
     
@@ -523,6 +524,73 @@ static NSString *identifier = @"identifier";
     PDTestViewController *vc = [[PDTestViewController alloc] init];
     [self.navigationController pushViewController:vc animated:YES];
 }
+
+#pragma mark 同步PicNet.json 到LeanCloudObjc
+
+- (void)doBackupPicNetJsonFile:(UIView *)sender {
+    // 获取当前源文件所在的目录路径
+    NSString *directoryPath = PPAppdelegate.projectDirectory;
+    // Users/garenge/Downloads/Develop/Data/PicData/PicData
+    NSLog(@"Project Directory: %@", PPAppdelegate.projectDirectory);
+    // 拼接 PicNet.json 的完整路径
+    // Users/garenge/Downloads/Develop/Data/PicData/PicData/PicData/Modules/Models/PicNet.json
+    NSString *picNetJsonPath = [directoryPath stringByAppendingPathComponent:@"PicData/Modules/Models/PicNet.json"];
+    
+    NSMutableArray *actions = [NSMutableArray array];
+    // 1. 将工程中的 PicNet.json 文件上传到服务器
+    [actions addObject:[UIAlertAction actionWithTitle:@"上传PicNet.json到服务器" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        [self doBackupPicNetJsonFile_upload:picNetJsonPath];
+    }]];
+    // 2. 服务器端将 PicNet.json 文件存储到工程目录下
+    [actions addObject:[UIAlertAction actionWithTitle:@"服务器端存储PicNet.json" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        [self doBackupPicNetJsonFile_download:picNetJsonPath];
+    }]];
+    
+    [actions addObject:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
+    }]];
+
+    [self showAlertWithTitle:@"同步PicNet.json" message:@"此操作将更新本地项目中的PicNet.json文件, 请注意数据备份." actions:actions];
+}
+
+- (void)doBackupPicNetJsonFile_upload:(NSString *)picNetJsonPath {
+    // 上传 PicNet.json 文件到服务器
+    if (![[NSFileManager defaultManager] fileExistsAtPath:picNetJsonPath]) {
+        [MBProgressHUD showInfoOnView:self.view WithStatus:@"PicNet.json文件不存在"];
+        return;
+    }
+    
+    [MBProgressHUD showHUDAddedTo:self.view WithStatus:@"正在更新"];
+    [[AppTool sharedAppTool] requestToUploadPicNetJsonFile:picNetJsonPath completion:^(BOOL isSuccess, NSError * _Nullable error) {
+        [MBProgressHUD hideHUDForView:self.view animated:YES];
+        if (isSuccess) {
+            [MBProgressHUD showInfoOnView:self.view WithStatus:@"PicNet.json上传成功"];
+        } else {
+            [MBProgressHUD showInfoOnView:self.view WithStatus:@"PicNet.json上传失败"];
+        }
+    }];
+}
+
+- (void)doBackupPicNetJsonFile_download:(NSString *)picNetJsonPath {
+    // 从服务器下载 PicNet.json 文件到本地
+    [MBProgressHUD showHUDAddedTo:self.view WithStatus:@"正在下载"];
+    [[AppTool sharedAppTool] requestPicNetJsonFile:^(NSString * _Nonnull filePath, NSError * _Nullable error) {
+        [MBProgressHUD hideHUDForView:self.view animated:YES];
+        
+        if (error || !filePath || ![[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
+            [MBProgressHUD showInfoOnView:self.view WithStatus:@"下载PicNet.json失败"];
+            return;
+        }
+        
+        // 下载成功, 将文件存储到本地
+        BOOL result = [NSFileManager.defaultManager doReplaceFile:picNetJsonPath withNewFilePath:filePath];
+        if (result) {
+            [MBProgressHUD showInfoOnView:self.view WithStatus:@"PicNet.json下载成功"];
+        } else {
+            [MBProgressHUD showInfoOnView:self.view WithStatus:@"PicNet.json下载失败"];
+        }
+    }];
+}
+    
 
 #pragma mark - notification
 - (void)socketDidConnected:(NSNotification *)notification {
