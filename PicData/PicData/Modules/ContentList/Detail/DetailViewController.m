@@ -147,13 +147,16 @@
         [items addObject:downItem];
     }
 
+    
+#if TARGET_OS_MACCATALYST
     if (self.detailModel.nextUrl.length > 0) {
         // 有下一页
         UIBarButtonItem *nextItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"arrow.right.square"] style:UIBarButtonItemStyleDone target:self action:@selector(loadNextDetailData)];
         [items addObject:nextItem];
     }
+#endif
 
-    self.navigationItem.rightBarButtonItems = items.copy;
+    [self.navigationItem setRightBarButtonItems:items.copy animated:YES];
 }
 
 - (void)loadNavigationItem {
@@ -172,7 +175,7 @@
 
 #endif
 
-    self.navigationItem.leftBarButtonItems = leftBarButtonItems;
+    [self.navigationItem setLeftBarButtonItems:leftBarButtonItems animated:YES];
 
     [self refreshRightNavigationItems];
 }
@@ -199,6 +202,8 @@
     UITableView *tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
     tableView.delegate = self;
     tableView.dataSource = self;
+    tableView.showsVerticalScrollIndicator = NO;
+    tableView.showsHorizontalScrollIndicator = NO;
     [self.view addSubview:tableView];
 
     if (@available(iOS 15.0, *)) {

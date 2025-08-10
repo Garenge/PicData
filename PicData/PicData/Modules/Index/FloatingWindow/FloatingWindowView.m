@@ -32,8 +32,10 @@
         floatingWindowView = [[FloatingWindowView alloc] initWithFrame:CGRectMake(kScreenWidth - 51 - Margin, kScreenHeight - 200, 50, 50)];
 #endif
         floatingWindowView.userInteractionEnabled = YES;
-        floatingWindowView.backgroundColor = [UIColor redColor];
-        floatingWindowView.image = [UIImage imageNamed:@"calculate"];
+        floatingWindowView.backgroundColor = [UIColor clearColor];
+        UIImage *image = [UIImage systemImageNamed:@"arrow.down.circle.dotted"];
+        floatingWindowView.image = image;
+        floatingWindowView.tintColor = ThemeColor;
         floatingWindowView.layer.cornerRadius = 25;
         floatingWindowView.areaActFrame = [AppTool getAppKeyWindow].bounds;
     });

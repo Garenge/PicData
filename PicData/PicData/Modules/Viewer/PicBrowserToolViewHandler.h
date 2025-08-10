@@ -13,6 +13,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface PicBrowserToolViewHandler : NSObject <YBIBToolViewHandler>
 
+- (void)setEyeShow:(BOOL)isShow;
+
+/// 点击隐藏显示操作按钮
+@property (nonatomic, copy) void(^didClickedEyeShowBtnBlock)(BOOL isShow);
+
 @end
 
 NS_ASSUME_NONNULL_END

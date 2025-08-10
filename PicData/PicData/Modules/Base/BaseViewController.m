@@ -50,6 +50,8 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    NSLog(@"======== %@ viewDidLoad", NSStringFromClass(self.class));
+    
     if ([self respondsToSelector:@selector(edgesForExtendedLayout)]) {
         self.edgesForExtendedLayout = UIRectEdgeNone;
     }
@@ -96,7 +98,7 @@
 #pragma mark 设置浮窗
 - (void)setupFloating {
     [[FloatingWindowView shareInstance] isHidden:NO];
-
+    [FloatingWindowView shareInstance].frame = CGRectMake(1, self.view.height - 100, 50, 50);
     [FloatingWindowView shareInstance].ClickAction = ^{
 
         AppTabBarController *tabBarVC = (AppTabBarController *)[AppTool getAppKeyWindow].rootViewController;

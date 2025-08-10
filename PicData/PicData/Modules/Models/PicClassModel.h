@@ -17,6 +17,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSArray <PicSourceModel *>*subTitles;
 @property (nonatomic, strong) NSArray <NSString *> *subTitleStrings;
 
+@property (nonatomic, assign) BOOL isLocal;
+
 + (instancetype)modelWithHOST_URL:(NSString *)HOST_URL Title:(NSString *)title sourceType:(int)sourceType subTitles:(nullable NSArray <PicSourceModel *>*)subTitles;
 
 @end

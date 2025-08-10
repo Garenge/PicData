@@ -43,7 +43,7 @@
 
     switch (sourceModel.sourceType) {
         case 3: {
-            nextE = document.QueryClass(@"pag").firstObject;
+            nextE = document.QueryClass(@"nav-next").firstObject;
         }
             break;
         case 4: {
@@ -72,7 +72,7 @@
                 NSString *nextPageTitle = @"下一页";
                 switch (sourceModel.sourceType) {
                     case 3:
-                        nextPageTitle = @"Next »";
+                        nextPageTitle = @"→";
                         break;
                     case 4:
                         nextPageTitle = @"下页";
@@ -85,7 +85,7 @@
                 }
                 
                 for (OCGumboElement *aE in aEs) {
-                    if ([aE.text() isEqualToString:nextPageTitle]) {
+                    if ([aE.text() isEqualToString:nextPageTitle] || [aE.text() containsString:nextPageTitle]) {
                         nextPage = aE.attr(@"href");
                         break;
                     }
@@ -121,8 +121,8 @@
 
     switch (sourceModel.sourceType) {
         case 3: {
-            OCGumboElement *listDiv = document.QueryID(@"content").firstObject;
-            articleEs = listDiv.QueryElement(@"article");
+            OCGumboElement *listDiv = document.QueryClass(@"HCRIN").firstObject;
+            articleEs = listDiv.QueryClass(@"VVAHRQFF");
         }
             break;
         case 4:{
@@ -176,7 +176,9 @@
             break;
         case 3: {
             imgE = articleElement.QueryElement(@"img").firstObject;
-            title = aE.text();
+            OCGumboElement *hE = articleElement.QueryClass(@"GZDHFYIQ").firstObject;
+            OCGumboElement *tE = hE.QueryElement(@"a").firstObject;
+            title = tE.text();
         }
             break;
         case 4: {
@@ -230,7 +232,7 @@
 
     switch (sourceModel.sourceType) {
         case 3: {
-            contentE = document.QueryClass(@"entry-content").firstObject;
+            contentE = document.QueryClass(@"VKSUBTSWA").firstObject;
         }
             break;
         case 4: {
@@ -255,7 +257,6 @@
         switch (sourceModel.sourceType) {
             case 3: {
                 src = e.attr(@"src");
-                src = [src stringByReplacingOccurrencesOfString:@"i0.wp.com/" withString:@""];
             }
                 break;
             default:
@@ -271,7 +272,7 @@
 
     switch (sourceModel.sourceType) {
         case 3: {
-            nextE = document.QueryClass(@"page-numbers").firstObject;
+            nextE = document.QueryClass(@"nav-links").firstObject;
         }
             break;
         case 4: {
@@ -374,8 +375,8 @@
         case 3: {
 
             // 推荐
-            OCGumboElement *listDiv = document.QueryID(@"recent-posts-2").firstObject;
-            OCQueryObject *articleEs = listDiv.QueryID(@"li");
+            OCGumboElement *listDiv = document.QueryID(@"fnCzzzzzzzzzzzzzzz").firstObject;
+            OCQueryObject *articleEs = listDiv.QueryClass(@"VVAHRQFF");
 
             for (OCGumboElement *articleE in articleEs) {
 

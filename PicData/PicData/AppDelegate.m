@@ -9,6 +9,7 @@
 #import "AppDelegate.h"
 #import <FirebaseCore/FirebaseCore.h>
 #import <LeanCloudObjc/Foundation.h>
+#import "PDWindow.h"
 
 @interface AppDelegate ()
 
@@ -47,7 +48,16 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     
-    self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+    // 获取当前文件路径
+    NSString *currentFilePath = [NSString stringWithUTF8String:__FILE__];
+    NSLog(@"当前文件Appdelegate.m 路径: %@", currentFilePath);
+    // 获取整个项目*.xcodeproj所在的目录
+    // /Users/garenge/Downloads/Develop/Data/PicData/PicData/PicData/AppDelegate.m
+    NSString *projectDirectory = [[currentFilePath stringByDeletingLastPathComponent] stringByDeletingLastPathComponent];
+    NSLog(@"项目目录: %@", projectDirectory);
+    self.projectDirectory = projectDirectory;
+    
+    self.window = [[PDWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
 
     self.window.windowScene.sizeRestrictions.minimumSize = CGSizeMake(400, 600);
     self.window.windowScene.sizeRestrictions.maximumSize = CGSizeMake(800, 600);
@@ -77,9 +87,7 @@
     
     [FIRApp configure];
     
-    [LCApplication setApplicationId:@"zt905pRz9SD2Tr2LQHNbKKzz-gzGzoHsz"
-                          clientKey:@"mlhD78Z4D2nziRSbxcvWdFj8"
-                    serverURLString:@"https://zt905prz.lc-cn-n1-shared.com"];
+    [[AppTool sharedAppTool] requestLeanCloudInit];
 
     // 检查更新
     dispatch_after(2, dispatch_get_main_queue(), ^{

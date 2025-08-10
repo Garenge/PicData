@@ -108,6 +108,9 @@
 		9DE95CE8244C4E5700E31735 /* PicContentModel.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9DE95CE7244C4E5700E31735 /* PicContentModel.mm */; };
 		9DE95CEE244C5FBC00E31735 /* UILabel+text.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DE95CED244C5FBC00E31735 /* UILabel+text.m */; };
 		9DE95CFA244CA25900E31735 /* PDDownloadManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DE95CF9244CA25900E31735 /* PDDownloadManager.m */; };
+		9DFA27EA2E0FF21300E83C27 /* PDWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA27E92E0FF21300E83C27 /* PDWindow.m */; };
+		9DFA27EF2E0FF55600E83C27 /* PDTestViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA27EE2E0FF55600E83C27 /* PDTestViewController.m */; };
+		9DFA27F32E0FF5A200E83C27 /* PDTestView.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA27F22E0FF5A200E83C27 /* PDTestView.m */; };
 		9DFA897C2BDE83D800268626 /* SharedListViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA897B2BDE83D800268626 /* SharedListViewController.m */; };
 		9DFA897F2BDE891500268626 /* NSFileManager+Ex.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA897E2BDE891500268626 /* NSFileManager+Ex.m */; };
 		9DFA89822BDE89F200268626 /* SharedListTableViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA89812BDE89F200268626 /* SharedListTableViewCell.m */; };
@@ -326,6 +329,12 @@
 		9DE95CF8244CA25900E31735 /* PDDownloadManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PDDownloadManager.h; sourceTree = "<group>"; };
 		9DE95CF9244CA25900E31735 /* PDDownloadManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PDDownloadManager.m; sourceTree = "<group>"; };
 		9DE95CFB244CA26F00E31735 /* Singleton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Singleton.h; sourceTree = "<group>"; };
+		9DFA27E82E0FF21300E83C27 /* PDWindow.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PDWindow.h; sourceTree = "<group>"; };
+		9DFA27E92E0FF21300E83C27 /* PDWindow.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PDWindow.m; sourceTree = "<group>"; };
+		9DFA27ED2E0FF55600E83C27 /* PDTestViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PDTestViewController.h; sourceTree = "<group>"; };
+		9DFA27EE2E0FF55600E83C27 /* PDTestViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PDTestViewController.m; sourceTree = "<group>"; };
+		9DFA27F12E0FF5A200E83C27 /* PDTestView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PDTestView.h; sourceTree = "<group>"; };
+		9DFA27F22E0FF5A200E83C27 /* PDTestView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PDTestView.m; sourceTree = "<group>"; };
 		9DFA897A2BDE83D800268626 /* SharedListViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SharedListViewController.h; sourceTree = "<group>"; };
 		9DFA897B2BDE83D800268626 /* SharedListViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SharedListViewController.m; sourceTree = "<group>"; };
 		9DFA897D2BDE891500268626 /* NSFileManager+Ex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSFileManager+Ex.h"; sourceTree = "<group>"; };
@@ -510,6 +519,7 @@
 				9DC94CA82552F7C2008ACAF8 /* Viewer */,
 				33AB92B124C3F58900E97E42 /* Setting */,
 				9DE95C8E244C3F5500E31735 /* Index */,
+				9DFA27EC2E0FF54700E83C27 /* Test */,
 			);
 			path = Modules;
 			sourceTree = "<group>";
@@ -715,6 +725,8 @@
 				9DE95C73244C3E0F00E31735 /* AppDelegate.m */,
 				9DE95C8B244C3E4900E31735 /* PicData.entitlements */,
 				9D8583B92C68CAE0006CE6CD /* GoogleService-Info.plist */,
+				9DFA27E82E0FF21300E83C27 /* PDWindow.h */,
+				9DFA27E92E0FF21300E83C27 /* PDWindow.m */,
 			);
 			path = PicData;
 			sourceTree = "<group>";
@@ -880,6 +892,17 @@
 				9D96DC9D25A376080045D123 /* AppTool.m */,
 			);
 			path = Manager;
+			sourceTree = "<group>";
+		};
+		9DFA27EC2E0FF54700E83C27 /* Test */ = {
+			isa = PBXGroup;
+			children = (
+				9DFA27ED2E0FF55600E83C27 /* PDTestViewController.h */,
+				9DFA27EE2E0FF55600E83C27 /* PDTestViewController.m */,
+				9DFA27F12E0FF5A200E83C27 /* PDTestView.h */,
+				9DFA27F22E0FF5A200E83C27 /* PDTestView.m */,
+			);
+			path = Test;
 			sourceTree = "<group>";
 		};
 		9DFA89792BDE83BB00268626 /* ShareList */ = {
@@ -1070,6 +1093,7 @@
 				9DE95CCA244C3FDD00E31735 /* tag.c in Sources */,
 				332D014126FD845F00E3F387 /* TKGestureLockManager.m in Sources */,
 				9DE95CCD244C3FDD00E31735 /* string_piece.c in Sources */,
+				9DFA27EF2E0FF55600E83C27 /* PDTestViewController.m in Sources */,
 				9D6330102CCD17A900EF8A18 /* EEBackView.m in Sources */,
 				336A9D9B250DF17C00BF277C /* PicContentView.m in Sources */,
 				9DC94C982552ECB8008ACAF8 /* BaseViewController.m in Sources */,
@@ -1101,6 +1125,7 @@
 				331F4CD428B3905600A0EF5D /* NSString+Ex.m in Sources */,
 				33B43FC7255455B600C33FD0 /* UINavigationController+push.m in Sources */,
 				9DB107F72A24969900131F45 /* SocketManager.m in Sources */,
+				9DFA27F32E0FF5A200E83C27 /* PDTestView.m in Sources */,
 				9D4B0E36262307CE0062AD82 /* SettingPathViewController.m in Sources */,
 				9D3593EF244D6D32005ADF05 /* DetailViewContentCell.m in Sources */,
 				331E994E289D6585001EC22E /* ParseOperation.m in Sources */,
@@ -1121,6 +1146,7 @@
 				9DE95CC7244C3FDD00E31735 /* utf8.c in Sources */,
 				9DE95CCC244C3FDD00E31735 /* tokenizer.c in Sources */,
 				9DE95CD7244C417900E31735 /* PicSourceModel.mm in Sources */,
+				9DFA27EA2E0FF21300E83C27 /* PDWindow.m in Sources */,
 				9DE95C85244C3E1100E31735 /* main.m in Sources */,
 				9D96DC9E25A376080045D123 /* AppTool.m in Sources */,
 				9D860CEE2CD72232004EAF56 /* ViewerContentSelCell.m in Sources */,

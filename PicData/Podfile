@@ -38,6 +38,8 @@ target 'PicData' do
   pod 'Firebase/Storage'
   pod 'FirebaseStorageUI'
   
+  # https://console.leancloud.cn/apps
+  # https://docs.leancloud.cn/sdk/storage/guide/objc/
   pod 'LeanCloudObjc'
 
 end

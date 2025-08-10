@@ -6,11 +6,19 @@
 //  Copyright © 2024 garenge. All rights reserved.
 //
 
-#import <PicDataSDK/PicDataSDK.h>
+#import <UIKit/UIKit.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface ViewerContentSelCell : ViewerContentCell
+@interface ViewerContentSelCell : UICollectionViewCell
+
+@property (nonatomic, weak) SDWebImageManager *manager;
+
+@property (nonatomic, strong) UIImageView *imageView;
+
+@property (nonatomic, strong) NSString *targetPath;
+
+@property (nonatomic, strong) ViewerFileModel *fileModel;
 
 @property (nonatomic, strong) UIImageView *selImageView;
 

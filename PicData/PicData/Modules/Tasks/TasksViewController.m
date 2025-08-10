@@ -37,6 +37,8 @@
 static NSString *cellIdentifier = @"cellIdentifier";
 static NSString *headerdentifier = @"headerdentifier";
 
+#pragma mark - View Lifecycle
+
 - (NSMutableArray *)progressModels {
     if (nil == _progressModels) {
         _progressModels = [NSMutableArray arrayWithArray:@[
@@ -71,7 +73,7 @@ static NSString *headerdentifier = @"headerdentifier";
 - (void)loadNavigationItem {
     self.navigationItem.title = @"下载";
 
-    UIBarButtonItem *arrangeItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"arrow.clockwise"] style:UIBarButtonItemStyleDone target:self action:@selector(arrangeItemClickAction:)];
+    UIBarButtonItem *arrangeItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"arrow.clockwise"] style:UIBarButtonItemStyleDone target:self action:@selector(doRefreshTaskList:)];
     self.navigationItem.rightBarButtonItem = arrangeItem;
 }
 
@@ -97,6 +99,8 @@ static NSString *headerdentifier = @"headerdentifier";
 
     [collectionView.mj_header beginRefreshing];
 }
+
+#pragma mark - Actions
 
 /** 刷新数据
  *  刷新时机:
@@ -129,7 +133,7 @@ static NSString *headerdentifier = @"headerdentifier";
     });
 }
 
-- (void)arrangeItemClickAction:(UIBarButtonItem *)sender {
+- (void)doRefreshTaskList:(UIBarButtonItem *)sender {
 
     [self.collectionView.mj_header beginRefreshing];
 }
@@ -138,7 +142,7 @@ static NSString *headerdentifier = @"headerdentifier";
     contentLabel.text = [NSString stringWithFormat:@"  %@%@", progressModel.expand ? @"▼" : @"►", progressModel.description];
 }
 
-- (void)tapHeaderGestureAction:(UITapGestureRecognizer *)gesture {
+- (void)doToggleTaskGroup:(UITapGestureRecognizer *)gesture {
     if ([gesture.view isKindOfClass:[PicProgressHeaderLabel class]]) {
         PicProgressHeaderLabel *contentLabel = (PicProgressHeaderLabel *)gesture.view;
 
@@ -174,7 +178,7 @@ static NSString *headerdentifier = @"headerdentifier";
     [self.navigationController pushViewController:fileListVC animated:YES];
 }
 
-#pragma mark - notification
+#pragma mark - Notifications
 
 - (void)receiveNoticeStartScaneTask:(NSNotification *)notification {
     [self reCallLoadDataList:1];
@@ -219,7 +223,7 @@ static NSString *headerdentifier = @"headerdentifier";
     [self reCallLoadDataList:1];
 }
 
-#pragma mark - delegate
+#pragma mark - UICollectionViewDataSource
 
 - (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView {
     return self.progressModels.count;
@@ -242,6 +246,8 @@ static NSString *headerdentifier = @"headerdentifier";
 
     return cell;
 }
+
+#pragma mark - UICollectionViewDelegate
 
 static CGFloat headerHeight = 35;
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout referenceSizeForHeaderInSection:(NSInteger)section {
@@ -266,7 +272,7 @@ static CGFloat headerHeight = 35;
                 make.edges.mas_equalTo(UIEdgeInsetsZero);
             }];
 
-            UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapHeaderGestureAction:)];
+            UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(doToggleTaskGroup:)];
             [contentLabel addGestureRecognizer:tapGesture];
         }
         contentLabel.index = indexPath.section;
@@ -301,7 +307,7 @@ static CGFloat headerHeight = 35;
         /// 2. 查看套图
 //        if (taskModel.status != ContentTaskStatusFinishDownload) {
             // 取消
-            UIAction *cancelDownload = [UIAction actionWithTitle:@"重新下载" image:nil identifier:nil handler:^(__kindof UIAction * _Nonnull action) {
+            UIAction *reDownload = [UIAction actionWithTitle:@"重新下载(不删除已下载文件)" image:nil identifier:nil handler:^(__kindof UIAction * _Nonnull action) {
 
                 [ContentParserManager.sharedContentParserManager cancelDownloadsByIdentifiers:@[taskModel.href]];
                 taskModel.status = ContentTaskStatusNormal;
@@ -311,7 +317,26 @@ static CGFloat headerHeight = 35;
                 [weakSelf reCallLoadDataList:0.5];
                 [ContentParserManager prepareToDoNextTask];
             }];
-            [actions addObject:cancelDownload];
+            [actions addObject:reDownload];
+        
+        UIAction *reDownloadForce = [UIAction actionWithTitle:@"重新下载(删除已下载文件)" image:nil identifier:nil handler:^(__kindof UIAction * _Nonnull action) {
+            
+            [ContentParserManager.sharedContentParserManager cancelDownloadsByIdentifiers:@[taskModel.href]];
+            PicSourceModel *sourceModel = [PicSourceModel queryTableWithUrl:taskModel.sourceHref].firstObject;
+            if (nil == sourceModel) {
+                return;
+            }
+            NSString *folderPath = [[PDDownloadManager sharedPDDownloadManager] getDirPathWithSource:sourceModel contentModel:taskModel];
+            NSError *rmError = nil;
+            [[NSFileManager defaultManager] removeItemAtPath:folderPath error:&rmError];
+            taskModel.status = ContentTaskStatusNormal;
+            taskModel.totalCount = 0;
+            taskModel.downloadedCount = 0;
+            [taskModel updateTable];
+            [weakSelf reCallLoadDataList:0.5];
+            [ContentParserManager prepareToDoNextTask];
+        }];
+        [actions addObject:reDownloadForce];
 //        }
 
         // 删除

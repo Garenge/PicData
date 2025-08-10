@@ -29,14 +29,37 @@
 @property (nonatomic, strong, nullable) NSTimer *nextTimer;
 @property (nonatomic, strong) UIButton *autoPlayBtn;
 
+@property (nonatomic, strong) SDWebImageManager *sdManager;
+
+@property (nonatomic, assign) NSInteger receivePicDownCompleteCount;
+
 @end
 
 @implementation LocalFileListVC
 
+- (SDWebImageManager *)sdManager {
+    if (nil == _sdManager) {
+        // 默认的cache
+        id<SDImageCache> cache = [[SDWebImageManager class] defaultImageCache];
+        if (!cache) {
+            cache = [SDImageCache new];
+        }
+        
+        // 自定义的loader
+        SDWebImageDownloader *loader = [[SDWebImageDownloader alloc] initWithConfig:SDWebImageDownloaderConfig.defaultDownloaderConfig];
+        
+        _sdManager = [[PPSDWebImageManager alloc] initWithCache:cache loader:loader];
+    }
+    return _sdManager;
+}
+
 // TODO: 不能根据导航层数判断按钮显示, 后期需要在其他地方弹出本地文件界面
 
 - (void)dealloc {
-    [AppTool releaseSDWebImageManager:0];
+    [self removeNotification];
+    [self.sdManager removeAllFailedURLs];
+    [self.sdManager.imageCache clearWithCacheType:SDImageCacheTypeAll completion:nil];
+    self.sdManager = nil;
     [self willDealloc];
 }
 
@@ -94,7 +117,7 @@
     
     NSMutableArray *leftBarButtonItems = [NSMutableArray array];
     if (self.navigationController.viewControllers.count > 1) {
-        UIBarButtonItem *backItem = [[UIBarButtonItem alloc] initWithTitle:@"返回" style:UIBarButtonItemStyleDone target:self action:@selector(backAction:)];
+        UIBarButtonItem *backItem = [[UIBarButtonItem alloc] initWithTitle:@"返回" style:UIBarButtonItemStyleDone target:self action:@selector(backAction)];
         [leftBarButtonItems addObject:backItem];
     }
     // mac端也允许整理按钮, 加警告框即可
@@ -139,7 +162,7 @@
     [self.navigationItem setRightBarButtonItems:items animated:YES];//.rightBarButtonItems = items;
 }
 
-- (void)backAction:(UIBarButtonItem *)sender {
+- (void)backAction {
     [self.navigationController popViewControllerAnimated:YES];
 }
 
@@ -190,6 +213,11 @@
     
     [self refreshLoadData:NO];
     [self loadNavigationItem];
+}
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    [self addNotification];
 }
 
 - (void)refreshLoadData:(BOOL)needFileSize {
@@ -261,6 +289,53 @@
 - (void)viewDidResize {
     self.browser.frame = self.browser.superview.bounds;
     [self.browser reloadData];
+}
+
+#pragma mark - notification
+
+- (void)removeNotification {
+    [NSNotificationCenter.defaultCenter removeObserver:self];
+}
+
+- (void)addNotification {
+    // 下载完成
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(receiveNoticeCompleteDownTask:) name:NotificationNameCompleteDownTask object:nil];
+    // 某图下载完成
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(receiveNoticeCompleteDownPicture:) name:NotificationNameCompleteDownPicture object:nil];
+}
+
+- (void)receiveNoticeCompleteDownTask:(NSNotification *)notification {
+    PicContentTaskModel *model = notification.userInfo[@"contentModel"];
+    if ([model.title isEqualToString:[self.targetFilePath lastPathComponent]]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self refreshLoadData:YES];
+        });
+    }
+}
+
+- (void)receiveNoticeCompleteDownPicture:(NSNotification *)notification {
+    
+    PicContentTaskModel *model = notification.userInfo[@"contentModel"];
+    if (![model.title isEqualToString:[self.targetFilePath lastPathComponent]]) {
+        return;
+    }
+    
+    self.receivePicDownCompleteCount ++;
+    
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self refreshLoadData:YES];
+    });
+    
+    if (self.receivePicDownCompleteCount >= 4) {
+        self.receivePicDownCompleteCount -= 4;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self refreshLoadData:YES];
+        });
+    }
+    
 }
 
 #pragma mark - action
@@ -393,7 +468,8 @@
             ViewerFileSModel *tempModel = sharedFileNameList[index];
             if ([PPFileManager isFileTypePicture:tempModel.fileName.pathExtension]) {
                 UIImage *image = [UIImage imageWithContentsOfFile:[weakSelf.targetFilePath stringByAppendingPathComponent:tempModel.fileName]];
-                return image;
+                NSData *data = UIImageJPEGRepresentation(image, 0.6);
+                return [UIImage imageWithData:data];
             } else {
                 return nil;
             }
@@ -520,8 +596,19 @@
     PDBlockSelf
     NSMutableArray *actions = [NSMutableArray array];
     if (self.contentModel) {
-        [actions addObject:[UIAlertAction actionWithTitle:@"重新下载" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-            [weakSelf reDownloadContents];
+        [actions addObject:[UIAlertAction actionWithTitle:@"重新下载(不删除原文件)" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            // 清空sdwebimage缓存
+            [weakSelf.sdManager removeAllFailedURLs];
+            [weakSelf.sdManager.imageCache clearWithCacheType:SDImageCacheTypeAll completion:^{
+                [weakSelf reDownloadContents:NO];
+            }];
+        }]];
+        [actions addObject:[UIAlertAction actionWithTitle:@"重新下载(删除原文件)" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            // 清空sdwebimage缓存
+            [weakSelf.sdManager removeAllFailedURLs];
+            [weakSelf.sdManager.imageCache clearWithCacheType:SDImageCacheTypeAll completion:^{
+                [weakSelf reDownloadContents:YES];
+            }];
         }]];
     }
     [actions addObject:[UIAlertAction actionWithTitle:@"一键重命名" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
@@ -555,9 +642,13 @@
 }
 
 - (void)refreshItemClickAction:(UIBarButtonItem *)sender {
-    [MBProgressHUD showHUDAddedTo:self.view animated:YES];
-    [self refreshLoadData:NO];
-    [MBProgressHUD hideHUDForView:self.view animated:YES];
+    [self.sdManager removeAllFailedURLs];
+    __weak typeof(self) weakSelf = self;
+    [self.sdManager.imageCache clearWithCacheType:SDImageCacheTypeAll completion:^{
+        [MBProgressHUD showHUDAddedTo:weakSelf.view animated:YES];
+        [weakSelf refreshLoadData:NO];
+        [MBProgressHUD hideHUDForView:weakSelf.view animated:YES];
+    }];
 }
 
 /// 清空所有文本文档
@@ -650,7 +741,8 @@
 }
 
 /// 重新下载
-- (void)reDownloadContents {
+- (void)reDownloadContents:(BOOL)deleteOldFiles {
+    
     PicContentModel *contentModel = [PicContentModel queryTableWithTitle:[self.targetFilePath lastPathComponent]].firstObject;
     if (nil == contentModel) {
         [MBProgressHUD showInfoOnView:self.view WithStatus:@"找不到该套图的下载记录" afterDelay:1];
@@ -665,10 +757,16 @@
         [MBProgressHUD showInfoOnView:self.view WithStatus:@"删除原下载记录失败" afterDelay:1];
         return;
     }
+    if (deleteOldFiles) {
+        NSString *folderPath = [[PDDownloadManager sharedPDDownloadManager] getDirPathWithSource:sourceModel contentModel:contentModel];
+        NSError *rmError = nil;
+        [[NSFileManager defaultManager] removeItemAtPath:folderPath error:&rmError];
+    }
     MJWeakSelf
     [ContentParserManager tryToAddTaskWithSourceModel:sourceModel ContentModel:contentModel operationTips:^(BOOL isSuccess, NSString * _Nonnull tips) {
         [MBProgressHUD showInfoOnView:weakSelf.view WithStatus:tips afterDelay:1];
     }];
+    [self refreshLoadData:NO];
 }
 
 - (void)arrangeAllFiles {
@@ -718,6 +816,7 @@
 }
 
 - (void)clearAllFiles {
+    [self.browser hide];
     PDBlockSelf
     NSString *message = self.isEditing ? @"确定删除选中的文件吗? 该过程不可逆" : @"确定删除所有文件吗? 该过程不可逆";
     [self showAlertWithTitle:@"提醒" message:message confirmTitle:@"确定" confirmHandler:^(UIAlertAction * _Nonnull action) {
@@ -769,7 +868,7 @@
                 [weakSelf.contentView.mj_header beginRefreshing];
             } else {
                 PPIsBlockExecute(weakSelf.didClearFolderBlock);
-                [weakSelf.navigationController popViewControllerAnimated:YES];
+                [weakSelf backAction];
             }
         } else {
             // [MBProgressHUD showInfoOnView:weakSelf.view WithStatus:@"删除失败" afterDelay:1];
@@ -876,7 +975,7 @@
                 if (needBack) {
                     
                     [MBProgressHUD showInfoOnView:AppTool.getAppKeyWindow WithStatus:@"已删除"];
-                    [weakSelf.navigationController popViewControllerAnimated:YES];
+                    [weakSelf backAction];
                 } else {
                     NSMutableArray *actions = [NSMutableArray array];
                     [actions addObject:[UIAlertAction actionWithTitle:@"好的" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
@@ -986,6 +1085,7 @@
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     ViewerContentSelCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"ViewerContentSelCell" forIndexPath:indexPath];
+    cell.manager = self.sdManager;
     cell.backgroundColor = [UIColor whiteColor];
     cell.targetPath = self.targetFilePath;
     cell.isEditing = self.isEditing;
@@ -1132,6 +1232,12 @@
         make.bottom.equalTo(rightBtn.mas_top).offset(-40);
     }];
     
+    handler.didClickedEyeShowBtnBlock = ^(BOOL isShow) {
+        leftBtn.hidden = !isShow;
+        rightBtn.hidden = !isShow;
+        autoPlayBtn.hidden = !isShow;
+    };
+    [handler setEyeShow:NO];
 }
 
 #if TARGET_OS_MACCATALYST
@@ -1199,24 +1305,24 @@
                         [self viewPicFile:fileModel indexPath:[NSIndexPath indexPathForItem:self.lastViewIndex inSection:0] contentView:self.contentView];
                     }
                 }
-            }
-            if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputEscape]) {//esc
+            } else if (key.keyCode == UIKeyboardHIDUsageKeyboardDeleteOrBackspace) {
+                [self.browser hide];
+                [self backAction];
+            } else if (key.keyCode == UIKeyboardHIDUsageKeyboardDeleteForward || key.keyCode == UIKeyboardHIDUsageKeypadPeriod) { // 删除键
+                [self clearAllFiles];
+            } else if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputEscape]) {//esc
                 didHandleEvent = YES;
                 [self.browser hide];
-            }
-            if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputLeftArrow]) {//左箭头
+            } else if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputLeftArrow]) {//左箭头
                                                                                         //                didHandleEvent = YES;
                 self.browser.currentPage = MAX(self.browser.currentPage - 1, 0);
-            }
-            if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputRightArrow]) {//右箭头
+            } else if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputRightArrow]) {//右箭头
                                                                                          //                didHandleEvent = YES;
                 self.browser.currentPage = MIN(self.browser.currentPage + 1, self.imgsList.count);
-            }
-            if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputUpArrow]) { // 上箭头
+            } else if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputUpArrow]) { // 上箭头
                 didHandleEvent = YES;
                 [self.browser hide];
-            }
-            if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputDownArrow]) { // 上箭头
+            } else if ([key.charactersIgnoringModifiers isEqualToString:UIKeyInputDownArrow]) { // 上箭头
                 didHandleEvent = YES;
                 [self.browser hide];
             }

@@ -1,292 +1,120 @@
 {
-    "hosts" : [
+    "hosts": [
         {
-            "searchKeys" : [
-                "梦心玥",
-                "梦心月",
-                "闫盼盼",
-                "萌兰酱",
-                "萌白酱",
-                "月音瞳",
-                "懂小姐",
-                "峰不二子",
-                "理万姬",
-                "会有妻",
-                "伊丽莎白",
-                "李丽莎",
-                "IVITAMINA",
-                "风吟鸟唱"
-            ],
-            "searchFormat" : "https://www.hitxhot.org/tag/%@",
-            "sourceType" : 3,
             "title" : "https://www.hitxhot.org",
-            "HOST_URL" : "https://www.hitxhot.org",
-            "urls" : [
+            "sourceType" : 3,
+            "HOST_URL": "https://www.hitxhot.org",
+            "referer": "https://www.hitxhot.org",
+            "urls": [
                 {
-                    "url" : "https://www.hitxhot.org/?page=1",
-                    "title" : "hitxhot首页"
+                    "url": "https://www.hitxhot.org/?page=1",
+                    "title": "hitxhot首页"
                 },
                 {
-                    "url" : "https://www.hitxhot.org/hot?page=1",
-                    "title" : "hitxhot首页1"
+                    "url": "https://www.hitxhot.org/hot?page=1",
+                    "title": "hitxhot首页1"
                 },
                 {
-                    "url" : "https://www.hitxhot.org/hot?page=2",
-                    "title" : "hitxhot首页11"
+                    "url": "https://www.hitxhot.org/hot?page=2",
+                    "title": "hitxhot首页11"
                 },
                 {
-                    "url" : "https://www.hitxhot.org/hot?page=21",
-                    "title" : "hitxhot首页21"
+                    "url": "https://www.hitxhot.org/hot?page=21",
+                    "title": "hitxhot首页21"
                 },
                 {
-                    "url" : "https://www.hitxhot.org/hot?page=31",
-                    "title" : "hitxhot首页31"
+                    "url": "https://www.hitxhot.org/hot?page=31",
+                    "title": "hitxhot首页31"
                 },
                 {
-                    "url" : "https://www.hitxhot.org/hot?page=41",
-                    "title" : "hitxhot首页41"
+                    "url": "https://www.hitxhot.org/hot?page=41",
+                    "title": "hitxhot首页41"
                 },
                 {
-                    "url" : "https://www.hitxhot.org/hot?page=51",
-                    "title" : "hitxhot首页51"
+                    "url": "https://www.hitxhot.org/hot?page=51",
+                    "title": "hitxhot首页51"
                 },
                 {
-                    "url" : "https://www.hitxhot.org/hot?page=61",
-                    "title" : "hitxhot首页61"
+                    "url": "https://www.hitxhot.org/hot?page=61",
+                    "title": "hitxhot首页61"
                 },
                 {
-                    "url" : "https://www.hitxhot.org/hot?page=71",
-                    "title" : "hitxhot首页71"
-                }
+                    "url": "https://www.hitxhot.org/hot?page=71",
+                    "title": "hitxhot首页71"
+                },
             ],
-            "tips" : "建议开启代理",
-            "searchEncode" : true,
-            "referer" : "https://www.hitxhot.org",
-            "tagsUrl" : "",
-            "prepared" : false,
-            "mark" : "hitxhot"
+            "tagsUrl": "",
+            "searchFormat": "https://www.hitxhot.org/tag/%@",
+            "searchKeys": ["梦心玥", "梦心月", "闫盼盼", "萌兰酱", "萌白酱", "月音瞳", "私购", "流出",
+                "懂小姐", "峰不二子", "理万姬", "会有妻", "伊丽莎白", "李丽莎", "IVITAMINA", "风吟鸟唱", "AV拍摄实录", "摄影", "私人写真",
+            ],
+            "searchEncode": true,
+            "mark": "hitxhot",
+            "tips": "建议开启代理",
+            "prepared": true,
         },
         {
-            "urls" : [
-                {
-                    "url" : "https://meirentu.cc",
-                    "title" : "meirentu首页"
-                },
-                {
-                    "url" : "https://meirentu.cc/hots.html",
-                    "title" : "美图精选"
-                }
-            ],
-            "searchEncode" : true,
-            "HOST_URL" : "https://meirentu.cc",
-            "tagsUrl" : "https://meirentu.cc/tags.html",
+            "title": "https://www.bigboobsjapan.com",
+        },
+        {
+            "title": "https://www.tuzac.com",
+        },
+        {
+            "title": "https://jrants.com",
+        },
+        {
             "title" : "https://meirentu.cc",
-            "mark" : "美人图",
-            "searchFormat" : "https://meirentu.cc/s/%@.html",
-            "prepared" : false,
-            "tips" : "需开启代理",
             "sourceType" : 4,
-            "referer" : "https://meirentu.cc"
-        },
-        {
-            "searchKeys" : [
-                "XR Uncensored",
-                "yeha",
-                "Private photoshoot",
-                "Photography",
-                "风吟鸟唱",
-                "general collection",
-                "PANS",
-                "XIUREN",
-                "紧急企划",
-                "内部定制",
-                "梦心月",
-                "梦心玥",
-                "吴雪瑶",
-                "谢小蒽"
-            ],
-            "searchFormat" : "https://buondua.com/?search=%@",
-            "sourceType" : 10,
-            "title" : "https://buondua.com",
-            "HOST_URL" : "https://buondua.com",
-            "urls" : [
+            "HOST_URL": "https://meirentu.cc",
+            "referer": "https://meirentu.cc",
+            "urls": [
                 {
-                    "url" : "https://buondua.com",
-                    "title" : "buondua首页"
+                    "url": "https://meirentu.cc",
+                    "title": "meirentu首页"
                 },
                 {
-                    "url" : "https://buondua.com/hot",
-                    "title" : "buondua hot"
-                },
-                {
-                    "url" : "https://buondua.com/collection",
-                    "title" : "buondua collection"
+                    "url": "https://meirentu.cc/hots.html",
+                    "title": "美图精选"
                 }
             ],
-            "tips" : "建议开启代理",
-            "searchEncode" : true,
-            "referer" : "https://buondua.com",
-            "tagsUrl" : "",
-            "prepared" : true,
-            "mark" : "buondua"
-        }
+            "tagsUrl": "https://meirentu.cc/tags.html",
+            "searchFormat": "https://meirentu.cc/s/%@.html",
+            "searchEncode": true,
+            "mark": "美人图",
+            "tips": "需开启代理",
+            "prepared": true,
+        },
+        {
+            "title" : "https://buondua.com",
+            "sourceType" : 10,
+            "HOST_URL": "https://buondua.com",
+            "referer": "https://buondua.com",
+            "urls": [
+                {
+                    "url": "https://buondua.com",
+                    "title": "buondua首页"
+                },
+                {
+                    "url": "https://buondua.com/hot",
+                    "title": "buondua hot"
+                },
+                {
+                    "url": "https://buondua.com/collection",
+                    "title": "buondua collection"
+                }
+            ],
+            "tagsUrl": "",
+            "searchFormat": "https://buondua.com/?search=%@",
+            "searchKeys": [
+                "XR Uncensored", "yeha", "Private photoshoot", "Photography", "风吟鸟唱",
+                "general collection", "PANS", "XIUREN", "紧急企划", "内部定制"
+            ],
+            "searchEncode": true,
+            "mark": "buondua",
+            "tips": "建议开启代理",
+            "prepared": true,
+        },
     ],
-    "searchKeys" : [
-        "阿朱",
-        "艾尔莎",
-        "艾静香",
-        "艾莉",
-        "艾小青",
-        "安然",
-        "白兔",
-        "白芷",
-        "李若汐",
-        "徐若兮",
-        "Erikaki",
-        "龙雪儿",
-        "白幼幼",
-        "宝宝",
-        "波多",
-        "仓井优香",
-        "草莓兔兔",
-        "沈梦瑶",
-        "陈小喵",
-        "程程程",
-        "程慧娴",
-        "大美媚京",
-        "豆瓣酱",
-        "逗逗",
-        "恩率",
-        "方子萱",
-        "绯月樱",
-        "冯木木",
-        "古月",
-        "果冻",
-        "过期米线线喵",
-        "韩静安",
-        "嘉宝贝",
-        "贾诗晗",
-        "九月",
-        "久久",
-        "觉蒽酱",
-        "可乐",
-        "乐朵朵",
-        "李雅柔",
-        "利世",
-        "良人",
-        "林乐一",
-        "林文文",
-        "林星阑",
-        "林悠悠",
-        "林杉杉",
-        "龙泽美曦",
-        "噜噜妞儿",
-        "陆萱萱",
-        "璐璐",
-        "美七",
-        "美桃酱",
-        "萌白酱",
-        "萌萌",
-        "萌柰子",
-        "萌琪琪",
-        "梦心月",
-        "梦心玥",
-        "模特合集",
-        "娜比",
-        "奶瓶",
-        "奈沐子",
-        "南初",
-        "糯美子",
-        "欧阳",
-        "七月",
-        "柒",
-        "绮里嘉",
-        "绮梦",
-        "沁沁",
-        "人间荒糖",
-        "肉肉",
-        "佘贝拉",
-        "诗诗",
-        "苏雨彤",
-        "孙梦瑶",
-        "唐安琪",
-        "唐婉儿",
-        "桃桃",
-        "陶喜乐",
-        "甜妮",
-        "兔兔",
-        "王心怡",
-        "王馨瑶",
-        "王雨纯",
-        "王语纯",
-        "王梓童",
-        "薇薇",
-        "吴雪瑶",
-        "汐汐",
-        "西门小玉",
-        "夏西",
-        "夏小秋",
-        "夏雪爱",
-        "香儿",
-        "小不点",
-        "小海臀",
-        "小狐狸",
-        "小蛮腰",
-        "小宣",
-        "小姿",
-        "星小兔",
-        "熊川纪信",
-        "熊小诺",
-        "徐安安",
-        "徐莉芝",
-        "徐微微",
-        "许诺",
-        "玄子",
-        "薛琪琪",
-        "言沫",
-        "颜浅浅",
-        "杨晨晨",
-        "一颗甜蛋黄",
-        "以瑟",
-        "艺儿伢哟",
-        "艺轩",
-        "尹甜甜",
-        "桃桃子",
-        "林子遥",
-        "樱桃酱",
-        "优优",
-        "鱼子酱",
-        "玉兔",
-        "园园",
-        "晚苏",
-        "媛媛酱",
-        "月音瞳",
-        "悦爷妖精",
-        "战姝羽",
-        "张思允",
-        "张小妮",
-        "张欣欣",
-        "张雨萌",
-        "赵万灵",
-        "郑颖姗",
-        "芝芝Booty",
-        "周井空",
-        "周慕汐",
-        "周于希",
-        "苏苏",
-        "谢小蒽",
-        "babe",
-        "BoBo",
-        "cake",
-        "Carry",
-        "fancy",
-        "Irene",
-        "Kiki",
-        "Lavinia",
-        "suki",
-        "UU",
-        "vicky",
-        "wendy",
-        "YUNDUOER"
-    ]
+    "searchKeys": ["阿朱","艾尔莎","艾静香","艾莉","艾小青","安然","白兔","白芷", "李若汐","徐若兮","Erikaki","龙雪儿","白幼幼","宝宝","波多","仓井优香","草莓兔兔","沈梦瑶","陈小喵","程程程","程慧娴","大美媚京","豆瓣酱","逗逗","恩率","方子萱","绯月樱","冯木木","古月","果冻","过期米线线喵","韩静安","嘉宝贝","贾诗晗","九月","久久","觉蒽酱","可乐","乐朵朵","李雅柔","利世","良人","林乐一","林文文","林星阑","林悠悠","林杉杉","龙泽美曦","噜噜妞儿","陆萱萱","璐璐","美七","美桃酱","萌白酱","萌萌","萌柰子","萌琪琪","梦心月","梦心玥","模特合集","娜比","奶瓶","奈沐子","南初","糯美子","欧阳","七月","柒","绮里嘉","绮梦","沁沁","人间荒糖","肉肉","佘贝拉","诗诗","苏雨彤","孙梦瑶","唐安琪","唐婉儿","桃桃","陶喜乐","甜妮","兔兔","王心怡","王馨瑶","王雨纯","王语纯","王梓童","薇薇","吴雪瑶","汐汐","西门小玉","夏西","夏小秋","夏雪爱","香儿","小不点","小海臀","小狐狸","小蛮腰","小宣","小姿","星小兔","熊川纪信","熊小诺","徐安安","徐莉芝","徐微微","许诺","玄子","薛琪琪","言沫","颜浅浅","杨晨晨","一颗甜蛋黄","以瑟","艺儿伢哟","艺轩","尹甜甜","桃桃子","林子遥","樱桃酱","优优","鱼子酱","玉兔","园园","晚苏","媛媛酱","月音瞳","悦爷妖精","战姝羽","张思允","张小妮","张欣欣","张雨萌","赵万灵","郑颖姗","芝芝Booty","周井空","周慕汐","周于希","苏苏","谢小蒽","babe","BoBo","cake","Carry","fancy","Irene","Kiki","Lavinia","suki","UU","vicky","wendy","YUNDUOER"]
+
 }
