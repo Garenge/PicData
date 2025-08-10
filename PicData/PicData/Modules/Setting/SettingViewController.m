@@ -97,6 +97,7 @@
     }
     [downloadSubModels addObject:[SettingOperationModel ModelWithName:@"切换最大同时下载数量" value:[NSString stringWithFormat:@"当前限制最多%ld个任务", [PDDownloadManager sharedPDDownloadManager].maxDownloadOperationCount] func:@"changeMaxDownloadOperationCount:"]];
     [downloadSubModels addObject:[SettingOperationModel ModelWithName:@"一键停止下载" value:@"" func:@"onekeyStopDownload:"]];
+    [downloadSubModels addObject:[SettingOperationModel ModelWithName:@"一键完成所有下载" value:@"" func:@"onekeyFinishAllDownload:"]];
     [downloadSubModels addObject:[SettingOperationModel ModelWithName:@"重新下载已完成任务" value:@"" func:@"restartAllDownloads:"]];
     downloadModel.subOperationModels = downloadSubModels;
     [operationModels addObject:downloadModel];
@@ -268,27 +269,51 @@ static NSString *identifier = @"identifier";
 - (void)onekeyStopDownload:(UIView *)sender {
     [self showAlertWithTitle:@"提示" message:@"是否确定停止所有下载任务?" actions:@[
         [UIAlertAction actionWithTitle:@"仅停止下载" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-        [ContentParserManager cancelAll];
-    }],
+            [ContentParserManager cancelAll];
+        }],
         [UIAlertAction actionWithTitle:@"停止并删除未完成任务" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-        [ContentParserManager cancelAll];
-        // TODO: 删除未完成任务
-        NSMutableArray *array = [NSMutableArray arrayWithArray:[PicContentTaskModel queryTasksForStatus:0]];
-        [array addObjectsFromArray:[PicContentTaskModel queryTasksForStatus:1]];
-        [array addObjectsFromArray:[PicContentTaskModel queryTasksForStatus:2]];
-        for (PicContentTaskModel *taskModel in array) {
-            
-            PicSourceModel *sourceModel = [PicSourceModel queryTableWithUrl:taskModel.sourceHref].firstObject;
-            if (nil == sourceModel) {
-                continue;
+            [ContentParserManager cancelAll];
+            // TODO: 删除未完成任务
+            NSMutableArray *array = [NSMutableArray arrayWithArray:[PicContentTaskModel queryTasksForStatus:0]];
+            [array addObjectsFromArray:[PicContentTaskModel queryTasksForStatus:1]];
+            [array addObjectsFromArray:[PicContentTaskModel queryTasksForStatus:2]];
+            for (PicContentTaskModel *taskModel in array) {
+                
+                PicSourceModel *sourceModel = [PicSourceModel queryTableWithUrl:taskModel.sourceHref].firstObject;
+                if (nil == sourceModel) {
+                    continue;
+                }
+                // 更新contentModel就好了
+                [PicContentTaskModel deleteFromTableWithHref:taskModel.href];
+                NSString *path = [[PDDownloadManager sharedPDDownloadManager] getDirPathWithSource:sourceModel contentModel:taskModel];
+                [[NSFileManager defaultManager] removeItemAtPath:path error:nil];//可以删除该路径下所有文件包括该文件夹本身
+                [NSNotificationCenter.defaultCenter postNotificationName:NotificationNameCancelDownTasks object:nil userInfo:@{@"identifiers": @[taskModel.href ?: @""]}];
             }
-            // 更新contentModel就好了
-            [PicContentTaskModel deleteFromTableWithHref:taskModel.href];
-            NSString *path = [[PDDownloadManager sharedPDDownloadManager] getDirPathWithSource:sourceModel contentModel:taskModel];
-            [[NSFileManager defaultManager] removeItemAtPath:path error:nil];//可以删除该路径下所有文件包括该文件夹本身
-            [NSNotificationCenter.defaultCenter postNotificationName:NotificationNameCancelDownTasks object:nil userInfo:@{@"identifiers": @[taskModel.href ?: @""]}];
-        }
-    }],
+        }],
+        [UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
+        
+        }],
+    ]];
+}
+
+- (void)onekeyFinishAllDownload:(UIView *)sender {
+    [self showAlertWithTitle:@"提示" message:@"是否确定完成所有下载任务?" actions:@[
+        [UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            [ContentParserManager cancelAll];
+
+            NSMutableArray *array = [NSMutableArray arrayWithArray:[PicContentTaskModel queryTasksForStatus:0]];
+            [array addObjectsFromArray:[PicContentTaskModel queryTasksForStatus:1]];
+            [array addObjectsFromArray:[PicContentTaskModel queryTasksForStatus:2]];
+            for (PicContentTaskModel *taskModel in array) {
+                
+                taskModel.status = 3;
+                [taskModel updateTable];
+                [[NSNotificationCenter defaultCenter] postNotificationName:NotificationNameCompleteDownTask object:nil userInfo:@{@"contentModel": taskModel}];
+            }
+        }],
+        [UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
+        
+        }],
     ]];
 }
 

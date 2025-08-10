@@ -301,7 +301,7 @@ static CGFloat headerHeight = 35;
         /// 2. 查看套图
 //        if (taskModel.status != ContentTaskStatusFinishDownload) {
             // 取消
-            UIAction *cancelDownload = [UIAction actionWithTitle:@"重新下载" image:nil identifier:nil handler:^(__kindof UIAction * _Nonnull action) {
+            UIAction *reDownload = [UIAction actionWithTitle:@"重新下载(不删除已下载文件)" image:nil identifier:nil handler:^(__kindof UIAction * _Nonnull action) {
 
                 [ContentParserManager.sharedContentParserManager cancelDownloadsByIdentifiers:@[taskModel.href]];
                 taskModel.status = ContentTaskStatusNormal;
@@ -311,7 +311,26 @@ static CGFloat headerHeight = 35;
                 [weakSelf reCallLoadDataList:0.5];
                 [ContentParserManager prepareToDoNextTask];
             }];
-            [actions addObject:cancelDownload];
+            [actions addObject:reDownload];
+        
+        UIAction *reDownloadForce = [UIAction actionWithTitle:@"重新下载(删除已下载文件)" image:nil identifier:nil handler:^(__kindof UIAction * _Nonnull action) {
+            
+            [ContentParserManager.sharedContentParserManager cancelDownloadsByIdentifiers:@[taskModel.href]];
+            PicSourceModel *sourceModel = [PicSourceModel queryTableWithUrl:taskModel.sourceHref].firstObject;
+            if (nil == sourceModel) {
+                return;
+            }
+            NSString *folderPath = [[PDDownloadManager sharedPDDownloadManager] getDirPathWithSource:sourceModel contentModel:taskModel];
+            NSError *rmError = nil;
+            [[NSFileManager defaultManager] removeItemAtPath:folderPath error:&rmError];
+            taskModel.status = ContentTaskStatusNormal;
+            taskModel.totalCount = 0;
+            taskModel.downloadedCount = 0;
+            [taskModel updateTable];
+            [weakSelf reCallLoadDataList:0.5];
+            [ContentParserManager prepareToDoNextTask];
+        }];
+        [actions addObject:reDownloadForce];
 //        }
 
         // 删除
