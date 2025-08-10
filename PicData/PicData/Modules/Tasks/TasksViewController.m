@@ -37,6 +37,8 @@
 static NSString *cellIdentifier = @"cellIdentifier";
 static NSString *headerdentifier = @"headerdentifier";
 
+#pragma mark - View Lifecycle
+
 - (NSMutableArray *)progressModels {
     if (nil == _progressModels) {
         _progressModels = [NSMutableArray arrayWithArray:@[
@@ -71,7 +73,7 @@ static NSString *headerdentifier = @"headerdentifier";
 - (void)loadNavigationItem {
     self.navigationItem.title = @"下载";
 
-    UIBarButtonItem *arrangeItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"arrow.clockwise"] style:UIBarButtonItemStyleDone target:self action:@selector(arrangeItemClickAction:)];
+    UIBarButtonItem *arrangeItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"arrow.clockwise"] style:UIBarButtonItemStyleDone target:self action:@selector(doRefreshTaskList:)];
     self.navigationItem.rightBarButtonItem = arrangeItem;
 }
 
@@ -97,6 +99,8 @@ static NSString *headerdentifier = @"headerdentifier";
 
     [collectionView.mj_header beginRefreshing];
 }
+
+#pragma mark - Actions
 
 /** 刷新数据
  *  刷新时机:
@@ -129,7 +133,7 @@ static NSString *headerdentifier = @"headerdentifier";
     });
 }
 
-- (void)arrangeItemClickAction:(UIBarButtonItem *)sender {
+- (void)doRefreshTaskList:(UIBarButtonItem *)sender {
 
     [self.collectionView.mj_header beginRefreshing];
 }
@@ -138,7 +142,7 @@ static NSString *headerdentifier = @"headerdentifier";
     contentLabel.text = [NSString stringWithFormat:@"  %@%@", progressModel.expand ? @"▼" : @"►", progressModel.description];
 }
 
-- (void)tapHeaderGestureAction:(UITapGestureRecognizer *)gesture {
+- (void)doToggleTaskGroup:(UITapGestureRecognizer *)gesture {
     if ([gesture.view isKindOfClass:[PicProgressHeaderLabel class]]) {
         PicProgressHeaderLabel *contentLabel = (PicProgressHeaderLabel *)gesture.view;
 
@@ -174,7 +178,7 @@ static NSString *headerdentifier = @"headerdentifier";
     [self.navigationController pushViewController:fileListVC animated:YES];
 }
 
-#pragma mark - notification
+#pragma mark - Notifications
 
 - (void)receiveNoticeStartScaneTask:(NSNotification *)notification {
     [self reCallLoadDataList:1];
@@ -219,7 +223,7 @@ static NSString *headerdentifier = @"headerdentifier";
     [self reCallLoadDataList:1];
 }
 
-#pragma mark - delegate
+#pragma mark - UICollectionViewDataSource
 
 - (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView {
     return self.progressModels.count;
@@ -242,6 +246,8 @@ static NSString *headerdentifier = @"headerdentifier";
 
     return cell;
 }
+
+#pragma mark - UICollectionViewDelegate
 
 static CGFloat headerHeight = 35;
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout referenceSizeForHeaderInSection:(NSInteger)section {
@@ -266,7 +272,7 @@ static CGFloat headerHeight = 35;
                 make.edges.mas_equalTo(UIEdgeInsetsZero);
             }];
 
-            UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapHeaderGestureAction:)];
+            UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(doToggleTaskGroup:)];
             [contentLabel addGestureRecognizer:tapGesture];
         }
         contentLabel.index = indexPath.section;
