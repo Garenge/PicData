@@ -122,7 +122,9 @@
     switch (sourceModel.sourceType) {
         case 3: {
             OCGumboElement *listDiv = document.QueryClass(@"HCRIN").firstObject;
-            articleEs = listDiv.QueryClass(@"VVAHRQFF");
+            if (listDiv) {
+                articleEs = listDiv.QueryClass(@"VVAHRQFF");
+            }
         }
             break;
         case 4:{
