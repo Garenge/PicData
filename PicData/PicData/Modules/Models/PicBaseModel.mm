@@ -21,10 +21,10 @@
 
 - (BOOL)insertTable {
 //    return [[DatabaseManager getDatabase] insertOrReplaceObject:self into:[self.class tableName]];
-    return [[DatabaseManager getDatabase] insertObject:self into:[self.class tableName]];
+    return [[DatabaseManager getDatabase] insertObject:self intoTable:[self.class tableName]];
 }
 + (NSArray *)queryAll {
-    return [[DatabaseManager getDatabase] getAllObjectsOfClass:self fromTable:[self tableName]];
+    return [[DatabaseManager getDatabase] getObjectsOfClass:self fromTable:[self tableName]];
 }
 + (NSArray *)queryTableWithTitle:(NSString *)title {
     return [[DatabaseManager getDatabase] getObjectsOfClass:self fromTable:[self tableName] where:self.title == title];
@@ -34,12 +34,12 @@
     return [self.class deleteFromTableWithTitle:self.title];
 }
 + (BOOL)deleteFromTableWithTitle:(NSString *)title {
-    return [[DatabaseManager getDatabase] deleteObjectsFromTable:[self tableName] where:self.title == title];
+    return [[DatabaseManager getDatabase] deleteFromTable:[self tableName] where:self.title == title];
 }
 + (BOOL)deleteFromTable_All {
-    return [[DatabaseManager getDatabase] deleteAllObjectsFromTable:[self tableName]];
+    return [[DatabaseManager getDatabase] deleteFromTable:[self tableName]];
 }
 - (BOOL)updateTable {
-    return [[DatabaseManager getDatabase] updateRowsInTable:[self.class tableName] onProperties:[self.class AllProperties] withObject:self where:self.class.title == self.title];
+    return [[DatabaseManager getDatabase] updateTable:[self.class tableName] setProperties:[self.class allProperties] toObject:self where:self.class.title == self.title];
 }
 @end

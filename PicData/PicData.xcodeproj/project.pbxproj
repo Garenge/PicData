@@ -1046,9 +1046,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-PicData/Pods-PicData-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-PicData/Pods-PicData-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1063,9 +1067,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-PicData/Pods-PicData-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-PicData/Pods-PicData-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1370,8 +1378,6 @@
 					"\"YYImage\"",
 					"-framework",
 					"\"sqlcipher\"",
-					"-framework",
-					"\"sqliterk\"",
 					"-ObjC",
 					"-all_load",
 				);
@@ -1468,8 +1474,6 @@
 					"\"YYImage\"",
 					"-framework",
 					"\"sqlcipher\"",
-					"-framework",
-					"\"sqliterk\"",
 					"-ObjC",
 					"-all_load",
 				);

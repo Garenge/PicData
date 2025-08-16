@@ -11,7 +11,7 @@
 @implementation DataDemoModel
 
 WCDB_IMPLEMENTATION(DataDemoModel)
-WCDB_SYNTHESIZE(DataDemoModel, name)
+WCDB_SYNTHESIZE(name)
 
 + (NSString *)tableName {
     return @"Model";
@@ -19,7 +19,7 @@ WCDB_SYNTHESIZE(DataDemoModel, name)
 
 + (NSArray *)queryAllModelsWithDBUrl:(NSString *)dbUrl {
     WCTDatabase *getDatabase = [[WCTDatabase alloc] initWithPath:dbUrl];
-    return [getDatabase getAllObjectsOfClass:self fromTable:[self tableName]];
+    return [getDatabase getObjectsOfClass:self fromTable:[self tableName]];
 }
 
 + (DataDemoModel *)queryModelsWithDBUrl:(NSString *)dbUrl andTitle:(NSString *)title {

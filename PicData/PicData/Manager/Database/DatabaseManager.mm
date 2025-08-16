@@ -27,9 +27,9 @@
 + (void)createTables {
     WCTDatabase *wcdb = [DatabaseManager getDatabase];
 
-    [wcdb createTableAndIndexesOfName:[PicSourceModel tableName] withClass:[PicSourceModel class]];
-    [wcdb createTableAndIndexesOfName:[PicContentModel tableName] withClass:[PicContentModel class]];
-    [wcdb createTableAndIndexesOfName:[PicContentTaskModel tableName] withClass:[PicContentTaskModel class]];
+    [wcdb createTable:[PicSourceModel tableName] withClass:[PicSourceModel class]];
+    [wcdb createTable:[PicContentModel tableName] withClass:[PicContentModel class]];
+    [wcdb createTable:[PicContentTaskModel tableName] withClass:[PicContentTaskModel class]];
 }
 
 @end

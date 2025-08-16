@@ -143,13 +143,10 @@ PODS:
   - SDWebImage (5.12.5):
     - SDWebImage/Core (= 5.12.5)
   - SDWebImage/Core (5.12.5)
-  - SQLiteRepairKit (1.2.2):
-    - WCDBOptimizedSQLCipher (~> 1.2.0)
   - SSZipArchive (2.4.3)
-  - WCDB (1.0.7.5):
-    - SQLiteRepairKit (~> 1.2.0)
-    - WCDBOptimizedSQLCipher (~> 1.2.0)
-  - WCDBOptimizedSQLCipher (1.2.1)
+  - WCDB (2.1.10):
+    - WCDBOptimizedSQLCipher (= 1.4.7)
+  - WCDBOptimizedSQLCipher (1.4.7)
   - YBImageBrowser (3.0.9):
     - YBImageBrowser/Core (= 3.0.9)
   - YBImageBrowser/Core (3.0.9):
@@ -178,10 +175,10 @@ DEPENDENCIES:
   - PPCatalystTool
   - PPCustomAsyncOperation
   - PPSocket
-  - PPToolKit
+  - PPToolKit (from `../../../SDK/PPToolKit`)
   - SDWebImage (~> 5.0)
   - SSZipArchive
-  - WCDB
+  - WCDB (= 2.1.10)
   - YBImageBrowser
   - YYCategories
   - YYImage (from `https://github.com/QiuYeHong90/YYImage.git`)
@@ -207,13 +204,14 @@ SPEC REPOS:
     - nanopb
     - PromisesObjC
     - RecaptchaInterop
+    - WCDB
+    - WCDBOptimizedSQLCipher
     - YBImageBrowser
   https://github.com/Garenge/pengpengSpecs.git:
     - PicDataSDK
     - PPCatalystTool
     - PPCustomAsyncOperation
     - PPSocket
-    - PPToolKit
   trunk:
     - CWLateralSlide
     - IQKeyboardManager
@@ -222,13 +220,12 @@ SPEC REPOS:
     - MJExtension
     - MJRefresh
     - SDWebImage
-    - SQLiteRepairKit
     - SSZipArchive
-    - WCDB
-    - WCDBOptimizedSQLCipher
     - YYCategories
 
 EXTERNAL SOURCES:
+  PPToolKit:
+    :path: "../../../SDK/PPToolKit"
   YYImage:
     :git: https://github.com/QiuYeHong90/YYImage.git
 
@@ -265,18 +262,17 @@ SPEC CHECKSUMS:
   PPCatalystTool: 8c08ff72f6f79de7b37f4f04b5c0f346c535a65e
   PPCustomAsyncOperation: a9901452d6d5724d2c075535f7a16198a23eb8ee
   PPSocket: e3b5e0c8a045fc979e1a22e35e3679aa2a2e371e
-  PPToolKit: 3ca94dab5d1eeeaaa6e31c908fd8dd72457305ae
+  PPToolKit: 50fce29b51ac8552df52758944c99559cea53463
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   RecaptchaInterop: 7d1a4a01a6b2cb1610a47ef3f85f0c411434cb21
   SDWebImage: 0905f1b7760fc8ac4198cae0036600d67478751e
-  SQLiteRepairKit: 35aaae5a8838adb85f5b1eb4d796055be6060a4b
   SSZipArchive: fe6a26b2a54d5a0890f2567b5cc6de5caa600aef
-  WCDB: 8e90babdeb7784c569353a4bd22a66c0a175a882
-  WCDBOptimizedSQLCipher: baf44493b0c7a3d49e97bc5b64a3856f6428ddd1
+  WCDB: fd4fd2debd582d5a86f3572b5569b81a7ac3e5e7
+  WCDBOptimizedSQLCipher: 9bceac087eff9625b151838d3a30364f53f71ad9
   YBImageBrowser: 7ecc8bf33ffa5f3b94c397c29b4f3638dd37f527
   YYCategories: 6bcd4314c6661a561410dce4a793379ebd306abd
   YYImage: 20ec986d18a8d0ad421619d166a9e628097e2433
 
-PODFILE CHECKSUM: 1208bea8e8103a72e3cee2b5a6a00b2d156618cb
+PODFILE CHECKSUM: cfb9823df658f883e6916856f910aa30a3ea99d5
 
 COCOAPODS: 1.16.2

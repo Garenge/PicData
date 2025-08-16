@@ -11,15 +11,15 @@
 @implementation PicSourceModel
 
 WCDB_IMPLEMENTATION(PicSourceModel)
-WCDB_SYNTHESIZE(PicSourceModel, title)
-WCDB_SYNTHESIZE(PicSourceModel, systemTitle)
-WCDB_SYNTHESIZE(PicSourceModel, HOST_URL)
-WCDB_SYNTHESIZE(PicSourceModel, url)
-WCDB_SYNTHESIZE(PicSourceModel, sourceType)
+WCDB_SYNTHESIZE(title)
+WCDB_SYNTHESIZE(systemTitle)
+WCDB_SYNTHESIZE(HOST_URL)
+WCDB_SYNTHESIZE(url)
+WCDB_SYNTHESIZE(sourceType)
 
-WCDB_PRIMARY(PicSourceModel, url)
+WCDB_PRIMARY(url)
 
-WCDB_INDEX(PicSourceModel, "_index", url)
+WCDB_INDEX("_index", url)
 
 - (id)copy {
     PicSourceModel *sourceModel = [PicSourceModel mj_objectWithKeyValues:[self mj_keyValues]];
