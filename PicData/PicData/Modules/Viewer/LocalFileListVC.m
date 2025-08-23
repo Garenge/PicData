@@ -1145,6 +1145,17 @@
             self.isEditing = !self.isEditing;
         }];
         [actions addObject:editOrAction];
+
+        if (!self.isEditing) {
+            UIAction *copyAction = [UIAction actionWithTitle:@"复制" image:nil identifier:nil handler:^(__kindof UIAction * _Nonnull action) {
+                ViewerFileSModel *fileModel = self.fileNamesList[indexPath.row];
+                NSString *filePath = [self.targetFilePath stringByAppendingPathComponent:fileModel.fileName];
+                UIPasteboard.generalPasteboard.image = [UIImage imageWithContentsOfFile:filePath];
+                [MBProgressHUD showInfoOnView:self.view WithStatus:@"复制成功" afterDelay:1];
+            }];
+            [actions addObject:copyAction];
+        }
+
         return [UIMenu menuWithTitle:@"下载记录操作" children:actions];
     }];
     return configration;
