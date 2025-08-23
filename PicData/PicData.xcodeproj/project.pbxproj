@@ -108,6 +108,13 @@
 		9DE95CE8244C4E5700E31735 /* PicContentModel.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9DE95CE7244C4E5700E31735 /* PicContentModel.mm */; };
 		9DE95CEE244C5FBC00E31735 /* UILabel+text.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DE95CED244C5FBC00E31735 /* UILabel+text.m */; };
 		9DE95CFA244CA25900E31735 /* PDDownloadManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DE95CF9244CA25900E31735 /* PDDownloadManager.m */; };
+		9DF076E32E5A1A0000C85372 /* SourceType3Parser.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DF076DC2E5A1A0000C85372 /* SourceType3Parser.m */; };
+		9DF076E42E5A1A0000C85372 /* SourceType4Parser.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DF076DE2E5A1A0000C85372 /* SourceType4Parser.m */; };
+		9DF076E52E5A1A0000C85372 /* SourceType5Parser.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DF076E02E5A1A0000C85372 /* SourceType5Parser.m */; };
+		9DF076E62E5A1A0000C85372 /* SourceType10Parser.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DF076E22E5A1A0000C85372 /* SourceType10Parser.m */; };
+		9DF076E72E5A1A0000C85372 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 9DF076DA2E5A1A0000C85372 /* README.md */; };
+		9DF076ED2E5A1A1200C85372 /* BaseContentParser.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DF076EA2E5A1A1200C85372 /* BaseContentParser.m */; };
+		9DF076EE2E5A1A1200C85372 /* ContentParserFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DF076EC2E5A1A1200C85372 /* ContentParserFactory.m */; };
 		9DFA27EA2E0FF21300E83C27 /* PDWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA27E92E0FF21300E83C27 /* PDWindow.m */; };
 		9DFA27EF2E0FF55600E83C27 /* PDTestViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA27EE2E0FF55600E83C27 /* PDTestViewController.m */; };
 		9DFA27F32E0FF5A200E83C27 /* PDTestView.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA27F22E0FF5A200E83C27 /* PDTestView.m */; };
@@ -329,6 +336,20 @@
 		9DE95CF8244CA25900E31735 /* PDDownloadManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PDDownloadManager.h; sourceTree = "<group>"; };
 		9DE95CF9244CA25900E31735 /* PDDownloadManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PDDownloadManager.m; sourceTree = "<group>"; };
 		9DE95CFB244CA26F00E31735 /* Singleton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Singleton.h; sourceTree = "<group>"; };
+		9DF076DA2E5A1A0000C85372 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DF076DB2E5A1A0000C85372 /* SourceType3Parser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SourceType3Parser.h; sourceTree = "<group>"; };
+		9DF076DC2E5A1A0000C85372 /* SourceType3Parser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SourceType3Parser.m; sourceTree = "<group>"; };
+		9DF076DD2E5A1A0000C85372 /* SourceType4Parser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SourceType4Parser.h; sourceTree = "<group>"; };
+		9DF076DE2E5A1A0000C85372 /* SourceType4Parser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SourceType4Parser.m; sourceTree = "<group>"; };
+		9DF076DF2E5A1A0000C85372 /* SourceType5Parser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SourceType5Parser.h; sourceTree = "<group>"; };
+		9DF076E02E5A1A0000C85372 /* SourceType5Parser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SourceType5Parser.m; sourceTree = "<group>"; };
+		9DF076E12E5A1A0000C85372 /* SourceType10Parser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SourceType10Parser.h; sourceTree = "<group>"; };
+		9DF076E22E5A1A0000C85372 /* SourceType10Parser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SourceType10Parser.m; sourceTree = "<group>"; };
+		9DF076E82E5A1A0800C85372 /* ContentParserProtocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ContentParserProtocol.h; sourceTree = "<group>"; };
+		9DF076E92E5A1A1200C85372 /* BaseContentParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BaseContentParser.h; sourceTree = "<group>"; };
+		9DF076EA2E5A1A1200C85372 /* BaseContentParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BaseContentParser.m; sourceTree = "<group>"; };
+		9DF076EB2E5A1A1200C85372 /* ContentParserFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ContentParserFactory.h; sourceTree = "<group>"; };
+		9DF076EC2E5A1A1200C85372 /* ContentParserFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ContentParserFactory.m; sourceTree = "<group>"; };
 		9DFA27E82E0FF21300E83C27 /* PDWindow.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PDWindow.h; sourceTree = "<group>"; };
 		9DFA27E92E0FF21300E83C27 /* PDWindow.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PDWindow.m; sourceTree = "<group>"; };
 		9DFA27ED2E0FF55600E83C27 /* PDTestViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PDTestViewController.h; sourceTree = "<group>"; };
@@ -502,6 +523,20 @@
 				9D3593E0244D3D38005ADF05 /* ContentParserManager.m */,
 				335849A92841CA7500A5D9B3 /* ContentParserManager+Parser.h */,
 				335849AA2841CA7500A5D9B3 /* ContentParserManager+Parser.m */,
+				9DF076E82E5A1A0800C85372 /* ContentParserProtocol.h */,
+				9DF076E92E5A1A1200C85372 /* BaseContentParser.h */,
+				9DF076EA2E5A1A1200C85372 /* BaseContentParser.m */,
+				9DF076EB2E5A1A1200C85372 /* ContentParserFactory.h */,
+				9DF076EC2E5A1A1200C85372 /* ContentParserFactory.m */,
+				9DF076DA2E5A1A0000C85372 /* README.md */,
+				9DF076DB2E5A1A0000C85372 /* SourceType3Parser.h */,
+				9DF076DC2E5A1A0000C85372 /* SourceType3Parser.m */,
+				9DF076DD2E5A1A0000C85372 /* SourceType4Parser.h */,
+				9DF076DE2E5A1A0000C85372 /* SourceType4Parser.m */,
+				9DF076DF2E5A1A0000C85372 /* SourceType5Parser.h */,
+				9DF076E02E5A1A0000C85372 /* SourceType5Parser.m */,
+				9DF076E12E5A1A0000C85372 /* SourceType10Parser.h */,
+				9DF076E22E5A1A0000C85372 /* SourceType10Parser.m */,
 			);
 			path = Parser;
 			sourceTree = "<group>";
@@ -996,6 +1031,7 @@
 				9D6330112CCD17A900EF8A18 /* ee_web_gonext@2x.png in Resources */,
 				9D6330122CCD17A900EF8A18 /* ee_web_goback@2x.png in Resources */,
 				9DE95C82244C3E1100E31735 /* LaunchScreen.storyboard in Resources */,
+				9DF076E72E5A1A0000C85372 /* README.md in Resources */,
 				332D014326FD845F00E3F387 /* gesture_headIcon@2x.png in Resources */,
 				332D014A26FD845F00E3F387 /* gesture_normal@2x.png in Resources */,
 				332D014826FD845F00E3F387 /* gesture_normal@3x.png in Resources */,
@@ -1103,6 +1139,10 @@
 				9DE95CCD244C3FDD00E31735 /* string_piece.c in Sources */,
 				9DFA27EF2E0FF55600E83C27 /* PDTestViewController.m in Sources */,
 				9D6330102CCD17A900EF8A18 /* EEBackView.m in Sources */,
+				9DF076E32E5A1A0000C85372 /* SourceType3Parser.m in Sources */,
+				9DF076E42E5A1A0000C85372 /* SourceType4Parser.m in Sources */,
+				9DF076E52E5A1A0000C85372 /* SourceType5Parser.m in Sources */,
+				9DF076E62E5A1A0000C85372 /* SourceType10Parser.m in Sources */,
 				336A9D9B250DF17C00BF277C /* PicContentView.m in Sources */,
 				9DC94C982552ECB8008ACAF8 /* BaseViewController.m in Sources */,
 				33E64058281042A700E763B6 /* PPDownloadTaskOperation.m in Sources */,
@@ -1133,6 +1173,8 @@
 				331F4CD428B3905600A0EF5D /* NSString+Ex.m in Sources */,
 				33B43FC7255455B600C33FD0 /* UINavigationController+push.m in Sources */,
 				9DB107F72A24969900131F45 /* SocketManager.m in Sources */,
+				9DF076ED2E5A1A1200C85372 /* BaseContentParser.m in Sources */,
+				9DF076EE2E5A1A1200C85372 /* ContentParserFactory.m in Sources */,
 				9DFA27F32E0FF5A200E83C27 /* PDTestView.m in Sources */,
 				9D4B0E36262307CE0062AD82 /* SettingPathViewController.m in Sources */,
 				9D3593EF244D6D32005ADF05 /* DetailViewContentCell.m in Sources */,

@@ -542,7 +542,7 @@ static NSString *identifier = @"identifier";
         [self doBackupPicNetJsonFile_upload:picNetJsonPath];
     }]];
     // 2. 服务器端将 PicNet.json 文件存储到工程目录下
-    [actions addObject:[UIAlertAction actionWithTitle:@"服务器端存储PicNet.json" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+    [actions addObject:[UIAlertAction actionWithTitle:@"从服务器下载PicNet.json" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
         [self doBackupPicNetJsonFile_download:picNetJsonPath];
     }]];
     
