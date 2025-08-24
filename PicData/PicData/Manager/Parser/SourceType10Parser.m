@@ -34,11 +34,12 @@
     for (OCGumboElement *articleE in articleEs) {
         PicContentModel *contentModel = [self getContentModelWithArticleElement:articleE sourceModel:sourceModel];
         if (contentModel) {
-            [contentModel insertTable];
+//            [contentModel insertTable];
             [articleContents addObject:contentModel];
         }
     }
-    
+    [PicContentModel insertTableWithModels:articleContents];
+
     return [articleContents copy];
 }
 
@@ -134,11 +135,12 @@
     for (OCGumboElement *articleE in articleEs) {
         PicContentModel *contentModel = [self getContentModelWithArticleElement:articleE sourceModel:sourceModel];
         if (contentModel) {
-            [contentModel insertTable];
+//            [contentModel insertTable];
             [suggestions addObject:contentModel];
         }
     }
-    
+    [PicContentModel insertTableWithModels:suggestions];
+
     return [suggestions copy];
 }
 

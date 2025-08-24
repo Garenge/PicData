@@ -273,7 +273,7 @@
             }
 
             sourceModel.HOST_URL = hostModel.HOST_URL;
-            [sourceModel insertTable];
+//            [sourceModel insertTable];
 
             [sourceModels addObject:sourceModel];
         }
@@ -299,12 +299,13 @@
 
             sourceModel.title = titleString;
             sourceModel.HOST_URL = hostModel.HOST_URL;
-            [sourceModel insertTable];
-
+//            [sourceModel insertTable];
             [subTitles addObject:sourceModel];
         }
     }
-    
+    [PicSourceModel insertTableWithModels:subTitles];
+
+
     // 临时加一个添加按钮
     PicSourceModel *addSourceModel = [[PicSourceModel alloc] init];
     addSourceModel.title = @"新增分类";

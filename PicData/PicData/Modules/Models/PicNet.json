@@ -54,15 +54,6 @@
             "prepared": true,
         },
         {
-            "title": "https://www.bigboobsjapan.com",
-        },
-        {
-            "title": "https://www.tuzac.com",
-        },
-        {
-            "title": "https://jrants.com",
-        },
-        {
             "title" : "https://meirentu.cc",
             "sourceType" : 4,
             "HOST_URL": "https://meirentu.cc",
@@ -83,6 +74,34 @@
             "mark": "美人图",
             "tips": "需开启代理",
             "prepared": true,
+        },
+        {
+            "title": "https://www.tuzac.com",
+            "sourceType" : 5,
+            "HOST_URL": "https://www.tuzac.com",
+            "referer": "https://www.tuzac.com",
+            "urls": [
+                {
+                    "url": "https://www.tuzac.com/newest",
+                    "title": "最新"
+                },
+                {
+                    "url": "https://www.tuzac.com/tags/%E6%97%A0%E5%9C%A3%E5%85%89",
+                    "title": "无圣光"
+                }
+            ],
+            "tagsUrl": "",
+            "searchFormat": "https://www.tuzac.com/search?term=%@&op=go",
+            "searchEncode": true,
+            "mark": "tuzac",
+            "tips": "需开启代理",
+            "prepared": true,
+        },
+        {
+            "title": "https://www.bigboobsjapan.com",
+        },
+        {
+            "title": "https://jrants.com",
         },
         {
             "title" : "https://buondua.com",

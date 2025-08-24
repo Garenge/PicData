@@ -26,21 +26,22 @@
                                                  sourceModel:(PicSourceModel *)sourceModel {
     NSMutableArray *articleContents = [NSMutableArray array];
     
-    OCGumboElement *listDiv = document.QueryClass(@"list").firstObject;
+    OCGumboElement *listDiv = document.QueryClass(@"content").firstObject;
     if (!listDiv) {
         return @[];
     }
     
-    OCQueryObject *articleEs = listDiv.QueryClass(@"piece");
-    
+    OCQueryObject *articleEs = listDiv.QueryClass(@"clearfix");
+
     for (OCGumboElement *articleE in articleEs) {
         PicContentModel *contentModel = [self getContentModelWithArticleElement:articleE sourceModel:sourceModel];
         if (contentModel) {
-            [contentModel insertTable];
+//            [contentModel insertTable];
             [articleContents addObject:contentModel];
         }
     }
-    
+    [PicContentModel insertTableWithModels:articleContents];
+
     return [articleContents copy];
 }
 
@@ -52,13 +53,16 @@
     }
     
     NSString *href = aE.attr(@"href");
-    NSString *title = aE.attr(@"title");
+    NSString *title = @"";
     
     // 获取图片元素
-    OCGumboElement *imgE = aE.QueryElement(@"img").firstObject;
+    OCGumboElement *imgE = articleElement.QueryElement(@"img").firstObject;
     if (!imgE) {
         return nil;
     }
+    
+    // 获取标题
+    title = imgE.attr(@"title");
     
     // 更新自定义内容名称
     title = [self updateCustomContentName:title contentHref:href sourceModel:sourceModel];
@@ -75,32 +79,94 @@
 
 - (NSArray<NSString *> *)parseDetailImagesWithDocument:(OCGumboDocument *)document 
                                            sourceModel:(PicSourceModel *)sourceModel {
-    // SourceType5 暂不支持详情页图片解析
-    return @[];
+    NSMutableArray *urls = [NSMutableArray array];
+    
+    OCGumboElement *contentE = document.QueryClass(@"file-detail").firstObject;
+    if (!contentE) {
+        return @[];
+    }
+    
+    OCQueryObject *es = contentE.Query(@"img");
+    for (OCGumboElement *e in es) {
+        NSString *src = e.attr(@"src");
+        if (src.length > 0) {
+            [urls addObject:src];
+        }
+    }
+    
+    return [urls copy];
 }
 
 - (nullable NSString *)parseNextPageWithDocument:(OCGumboDocument *)document 
                                     sourceModel:(PicSourceModel *)sourceModel {
-    // SourceType5 暂不支持下一页解析
+    OCGumboElement *nextE = document.QueryID(@"pager").firstObject;
+    if (!nextE) {
+        return nil;
+    }
+    
+    OCQueryObject *aEs = nextE.QueryElement(@"a");
+    NSString *nextPageTitle = @"下一页 ›";
+
+    for (OCGumboElement *aE in aEs) {
+        if ([aE.text() isEqualToString:nextPageTitle] || [aE.text() containsString:nextPageTitle]) {
+            NSString *nextPage = aE.attr(@"href");
+            if (nextPage.length > 0) {
+                return [NSURL URLWithString:nextPage relativeToURL:[NSURL URLWithString:sourceModel.HOST_URL]].absoluteString;
+            }
+            break;
+        }
+    }
+    
     return nil;
 }
 
 - (NSArray<PicContentModel *> *)parseSuggestionsWithDocument:(OCGumboDocument *)document 
                                                  sourceModel:(PicSourceModel *)sourceModel {
-    // SourceType5 暂不支持推荐内容解析
-    return @[];
+    NSMutableArray *suggestions = [NSMutableArray array];
+    
+    OCGumboElement *listDiv = document.QueryClass(@"related-files").firstObject;
+    if (!listDiv) {
+        return @[];
+    }
+    
+    OCQueryObject *articleEs = listDiv.QueryClass(@"clearfix");
+
+    for (OCGumboElement *articleE in articleEs) {
+        PicContentModel *contentModel = [self getContentModelWithArticleElement:articleE sourceModel:sourceModel];
+        if (contentModel) {
+//            [contentModel insertTable];
+            [suggestions addObject:contentModel];
+        }
+    }
+    [PicContentModel insertTableWithModels:suggestions];
+
+    return [suggestions copy];
 }
 
 - (NSString *)parsePageTitleWithDocument:(OCGumboDocument *)document 
                                     href:(NSString *)href 
                               sourceModel:(PicSourceModel *)sourceModel {
-    // SourceType5 暂不支持页面标题解析
-    return @"";
+    NSString *title = @"";
+    
+    OCGumboElement *headE = document.QueryElement(@"head").firstObject;
+    OCGumboElement *titleE = headE.QueryElement(@"title").firstObject;
+    if (titleE) {
+        NSString *title1 = titleE.text();
+        // title1 => "Hit-x-Hot: Vol. 4832 可乐Vicky | Page 1/5"
+        if ([title1 containsString:@" | Page"]) {
+            // 对str字符串进行匹配
+            title = [title1 splitStringWithLeadingString:@" Hit-x-Hot: " trailingString:@" | Page" error:nil];
+        } else {
+            title = [title1 stringByReplacingOccurrencesOfString:@" Hit-x-Hot: " withString:@""];
+        }
+    }
+    
+    return [self updateCustomContentName:title contentHref:href sourceModel:sourceModel];
 }
 
 - (NSArray<PicClassModel *> *)parseTagsWithDocument:(OCGumboDocument *)document 
                                          hostModel:(PicNetModel *)hostModel {
-    // SourceType5 暂不支持标签解析
+    // SourceType3 暂不支持标签解析
     return @[];
 }
 
@@ -109,8 +175,17 @@
 - (NSString *)updateCustomContentName:(NSString *)preContentTitle 
                           contentHref:(NSString *)contentHref 
                           sourceModel:(PicSourceModel *)sourceModel {
-    // SourceType5 暂不需要自定义名称处理
-    return preContentTitle;
+    if (preContentTitle.length == 0) {
+        return preContentTitle;
+    }
+    
+    NSString *title = preContentTitle;
+    
+    // 追加指定名称 提高唯一性
+    NSString *identifier = [contentHref.lastPathComponent stringByDeletingPathExtension];
+    title = [NSString stringWithFormat:@"%@ %@", title, identifier];
+    
+    return title;
 }
 
 @end 

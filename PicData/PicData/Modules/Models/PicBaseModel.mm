@@ -23,6 +23,9 @@
 //    return [[DatabaseManager getDatabase] insertOrReplaceObject:self into:[self.class tableName]];
     return [[DatabaseManager getDatabase] insertObject:self intoTable:[self.class tableName]];
 }
++ (BOOL)insertTableWithModels:(NSArray<PicBaseModel *> *)models {
+    return [[DatabaseManager getDatabase] insertObjects:models intoTable:[self tableName]];
+}
 + (NSArray *)queryAll {
     return [[DatabaseManager getDatabase] getObjectsOfClass:self fromTable:[self tableName]];
 }

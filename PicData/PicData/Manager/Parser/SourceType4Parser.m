@@ -35,11 +35,11 @@
     for (OCGumboElement *articleE in articleEs) {
         PicContentModel *contentModel = [self getContentModelWithArticleElement:articleE sourceModel:sourceModel];
         if (contentModel) {
-            [contentModel insertTable];
+//            [contentModel insertTable];
             [articleContents addObject:contentModel];
         }
     }
-    
+    [PicContentModel insertTableWithModels:articleContents];
     return [articleContents copy];
 }
 
@@ -135,11 +135,12 @@
     for (OCGumboElement *articleE in articleEs) {
         PicContentModel *contentModel = [self getContentModelWithArticleElement:articleE sourceModel:sourceModel];
         if (contentModel) {
-            [contentModel insertTable];
+//            [contentModel insertTable];
             [suggestions addObject:contentModel];
         }
     }
-    
+    [PicContentModel insertTableWithModels:suggestions];
+
     return [suggestions copy];
 }
 
@@ -190,11 +191,13 @@
         sourceModel.url = url;
         sourceModel.title = subTitle;
         sourceModel.HOST_URL = hostModel.HOST_URL;
-        [sourceModel insertTable];
+//        [sourceModel insertTable];
         
         [subTitles addObject:sourceModel];
     }
-    
+
+    [PicSourceModel insertTableWithModels:subTitles];
+
     PicClassModel *classModel = [PicClassModel modelWithHOST_URL:hostModel.HOST_URL 
                                                            Title:@"标签" 
                                                        sourceType:hostModel.sourceType 

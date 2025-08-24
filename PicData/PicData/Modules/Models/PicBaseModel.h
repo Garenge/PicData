@@ -24,6 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSString *)tableName;
 
 - (BOOL)insertTable;
++ (BOOL)insertTableWithModels:(NSArray <PicBaseModel *>*)models;
 + (NSArray *)queryAll;
 
 + (NSArray *)queryTableWithTitle:(NSString *)title;
