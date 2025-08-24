@@ -437,6 +437,17 @@ singleton_implementation(AppTool)
 }
 - (void)requestPicNetJson:(void (^)(NSArray<PicNetModel *> * _Nonnull, NSError * _Nullable))completion {
 
+    if (AmIBeingDebugged()) {
+
+        NSString *filePath = [[NSBundle mainBundle] pathForResource:@"PicNet" ofType:@"json"];
+        [self paraseHostModelsFromFile:filePath];
+//        dispatch_async(dispatch_get_main_queue(), ^{
+            PPIsBlockExecute(completion, self.hostModels, nil);
+//        });
+
+        return;
+    }
+
     [self requestPicNetJsonFile:^(NSString *filePath, NSError * _Nullable error) {
         self.hasLatestHosts = YES;
         if (nil == filePath || error) {
@@ -460,9 +471,7 @@ singleton_implementation(AppTool)
             NSLog(@"======== 数据解析成功: %@", dataDic);
             [self paraseHostModelsFromFile:filePath];
         } else {
-            NSLog(@"======== 文件下载成功, 写入本地失败");
-            NSString *documentDir = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-            NSString *targetFilePath = [documentDir stringByAppendingPathComponent:@"PicNet.json"];
+            NSLog(@"======== 文件下载成功, 写入本地失败, 直接读取旧文件");
             [self paraseHostModelsFromFile:targetFilePath];
         }
 
