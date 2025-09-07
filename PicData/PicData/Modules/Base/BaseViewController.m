@@ -70,9 +70,6 @@
     [FloatingWindowView shareInstance].areaActFrame = self.view.bounds;
     
     // 页面会在拖拽下, 自动刷新
-    
-    NSLog(@"======== self.view.frame: %@", NSStringFromCGRect(self.view.frame));
-    NSLog(@"======== UIWindow.frame: %@", NSStringFromCGRect(UIApplication.sharedApplication.keyWindow.frame));
 #if TARGET_OS_MACCATALYST
     
     // 方法重置, 在mac端拖动界面大小之后, 刷新tag列表, 重新布局
@@ -83,8 +80,8 @@
 }
 
 - (void)viewDidResize {
-    NSLog(@"======== 重新调整尺寸之后, self.view.frame: %@", NSStringFromCGRect(self.view.frame));
-    NSLog(@"======== 重新调整尺寸之后, UIWindow.frame: %@", NSStringFromCGRect(UIApplication.sharedApplication.keyWindow.frame));
+//    NSLog(@"======== 重新调整尺寸之后, self.view.frame: %@", NSStringFromCGRect(self.view.frame));
+//    NSLog(@"======== 重新调整尺寸之后, UIWindow.frame: %@", NSStringFromCGRect(UIApplication.sharedApplication.keyWindow.frame));
 }
 
 - (void)loadNavigationItem {

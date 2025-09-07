@@ -84,11 +84,24 @@ static CGFloat sideMargin = 5;
 
 #if TARGET_OS_MACCATALYST
 
+    // 方法重置, 在mac端拖动界面大小之后, 刷新tag列表, 重新布局
+    [self performResetLayoutWithDelay];
+
+#endif
+}
+
+- (void)performResetLayoutWithDelay {
+    // 取消之前的请求，避免重复调用
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(resetLayout) object:nil];
+    
+    [self performSelector:@selector(resetLayout) afterDelay:0.5];
+}
+
+- (void)resetLayout {
     // mac端拖拽之后, 界面重新适配
     PicContentViewFlowLayout *layout = (PicContentViewFlowLayout *)self.collectionViewLayout;
     layout.itemSize = [PicContentView itemSize:self.mj_w - 4 * sideMargin];
-
-#endif
+    self.collectionViewLayout = layout;
 }
 
 @end
