@@ -326,11 +326,13 @@ static NSString *shareFolderName = @"myShare";
                 // 遍历完成
                 if (contentTaskModel.totalCount > 0 && contentTaskModel.downloadedCount == contentTaskModel.totalCount) {
                     contentTaskModel.status = 3;
+                    // 这里思量再三, 不能每下载一张就更新一次进度, 写入数据库太频繁, 而且没必要
+                    // 当前程序的断点续传逻辑, 是整个任务从新开始, 所以跟你上次下载多少次无关, 只要没完成, 就会重新下载
+                    // 所以这里只需要下载完成再更新一次就行了
+                    [contentTaskModel updateTable];
                     [[NSNotificationCenter defaultCenter] postNotificationName:NotificationNameCompleteDownTask object:nil userInfo:@{@"contentModel": contentTaskModel}];
                 }
             }
-
-            [contentTaskModel updateTable];
             [[NSNotificationCenter defaultCenter] postNotificationName:NotificationNameCompleteDownPicture object:nil userInfo:@{@"contentModel": contentTaskModel}];
         };
 
