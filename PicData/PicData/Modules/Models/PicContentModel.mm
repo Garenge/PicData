@@ -120,6 +120,16 @@ WCDB_INDEX("_index", href)
     return [[[DatabaseManager getDatabase] getValueFromStatement:WCDB::StatementSelect().select([self allProperties].count().distinct()).from([self tableName]) .where(self.status == 1 || self.status == 2)] numberValue].integerValue;
 }
 
+/// 根据给定的href数组查询存在的任务
++ (NSArray *)queryTableWithHrefs:(NSArray<NSString *> *)hrefs {
+    // 假设 models 是 NSArray<Model *>
+    NSMutableArray *ids = [NSMutableArray arrayWithArray:hrefs];
+    // 批量查
+    NSArray<PicContentTaskModel *> *existArray =
+    [[DatabaseManager getDatabase] getObjectsOfClass:self fromTable:[self tableName] where:self.href.in(ids)];
+    return existArray;
+}
+
 - (BOOL)updateTable {
     if (self.status == 1) {
         self.startTime = [[NSDate date] timeIntervalSince1970];

@@ -42,6 +42,7 @@
 
     // 获取套图数组
     NSArray *results = [parser parseContentListWithDocument:document sourceModel:sourceModel];
+    results = [self refreshContentListDownloadStatus:results];
 
     // 获取下一页链接
     NSString *nextPage = [parser parseNextPageWithDocument:document sourceModel:sourceModel];
@@ -63,6 +64,26 @@
     }
     
     return [parser parseContentListWithDocument:document sourceModel:sourceModel];
+}
+
++ (NSArray <PicContentModel *>*)refreshContentListDownloadStatus:(NSArray <PicContentModel *>*)contentList {
+    NSArray<PicContentTaskModel *> *existArray = [PicContentTaskModel queryTableWithHrefs:[contentList pp_map:^id _Nonnull(PicContentModel * _Nonnull element) {
+        return element.href;
+    }]];
+
+    // 转成集合方便判断
+    NSMutableSet *existSet = [NSMutableSet set];
+    for (PicContentTaskModel *obj in existArray) {
+        [existSet addObject:obj.href];
+    }
+
+    // 标记
+    NSMutableArray *resultList = [NSMutableArray array];
+    for (PicContentModel *contentModel in contentList) {
+        contentModel.hasAddedToDLTasks = [existSet containsObject:contentModel.href];
+        [resultList addObject:contentModel];
+    }
+    return resultList;
 }
 
 #pragma mark 获取单个套图的信息
@@ -110,6 +131,8 @@
     NSArray<PicContentModel *> *suggestions = @[];
     if (needSuggest) {
         suggestions = [parser parseSuggestionsWithDocument:document sourceModel:sourceModel];
+        // 标记下载状态
+        suggestions = [self refreshContentListDownloadStatus:suggestions];
     }
     
     // 解析页面标题

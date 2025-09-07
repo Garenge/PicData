@@ -744,6 +744,8 @@
     [ContentParserManager tryToAddTaskWithSourceModel:self.sourceModel ContentModel:contentModel operationTips:^(BOOL isSuccess, NSString * _Nonnull tips) {
         [MBProgressHUD showInfoOnView:self.view WithStatus:tips afterDelay:0.5];
         [self refreshRightNavigationItems];
+        contentModel.hasAddedToDLTasks = YES;
+        [contentCell refreshDownloadStatus:YES];
     }];
 }
 

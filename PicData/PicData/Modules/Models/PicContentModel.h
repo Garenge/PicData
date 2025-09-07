@@ -18,6 +18,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSString *thumbnailUrl;
 @property (nonatomic, strong) NSString *href;
 
+/// 是否已经添加到下载任务中, 这个属性不写数据库, 由每次刷新列表的时候去查询数据库
+@property (nonatomic, assign) BOOL hasAddedToDLTasks;
+
 // TODO: 此处有个bug, contentModel收藏与否与taskModel收藏与否不等价(分属俩表)
 // TODO: 后期专门做一个收藏表, 保存收藏信息(清空数据时需要清空收藏表)
 /// 是否收藏
@@ -63,6 +66,9 @@ typedef NS_ENUM(NSInteger, ContentTaskStatus) {
 + (NSArray <PicContentTaskModel *>*)queryTasksForStatus:(ContentTaskStatus)status;
 /// 获取所有task status为给定值的任务数
 + (NSInteger)queryCountForTaskInStatus12;
+
+/// 根据给定的href数组查询存在的任务
++ (NSArray *)queryTableWithHrefs:(NSArray<NSString *> *)hrefs;
 
 - (BOOL)updateTableWithStatus;
 - (BOOL)updateTableWithStartTime;

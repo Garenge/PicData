@@ -24,6 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, strong) NSIndexPath *indexPath;
 @property (nonatomic, strong) PicContentModel *contentModel;
+- (void)refreshDownloadStatus:(BOOL)hasAddedToDLTasks;
 @property (nonatomic, weak) id<PicContentCellDelegate> delegate;
 
 
