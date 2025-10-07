@@ -102,7 +102,7 @@
     return [urls copy];
 }
 
-- (nullable NSString *)parseNextPageWithDocument:(OCGumboDocument *)document 
+- (nullable NSString *)parseNextPageForListWithDocument:(OCGumboDocument *)document 
                                     sourceModel:(PicSourceModel *)sourceModel {
     OCGumboElement *nextE = document.QueryClass(@"nav-next").firstObject;
     if (!nextE) {
@@ -125,27 +125,119 @@
     return nil;
 }
 
-- (NSArray<PicContentModel *> *)parseSuggestionsWithDocument:(OCGumboDocument *)document 
-                                                 sourceModel:(PicSourceModel *)sourceModel {
-    NSMutableArray *suggestions = [NSMutableArray array];
-    
-    OCGumboElement *listDiv = document.QueryID(@"fnCzzzzzzzzzzzzzzz").firstObject;
-    if (!listDiv) {
-        return @[];
+- (nullable NSString *)parseNextPageForDetailWithDocument:(OCGumboDocument *)document sourceModel:(PicSourceModel *)sourceModel {
+    OCGumboElement *nextE = document.QueryClass(@"nav-links").firstObject;
+    if (!nextE) {
+        return nil;
     }
     
-    OCQueryObject *articleEs = listDiv.QueryClass(@"VVAHRQFF");
+    OCQueryObject *aEs = nextE.QueryElement(@"a");
+    NSString *nextPageTitle = @"Next >";
     
-    for (OCGumboElement *articleE in articleEs) {
-        PicContentModel *contentModel = [self getContentModelWithArticleElement:articleE sourceModel:sourceModel];
-        if (contentModel) {
-//            [contentModel insertTable];
-            [suggestions addObject:contentModel];
+    for (OCGumboElement *aE in aEs) {
+        if ([aE.text() isEqualToString:nextPageTitle] || [aE.text() containsString:nextPageTitle]) {
+            NSString *nextPage = aE.attr(@"href");
+            if (nextPage.length > 0) {
+                return [NSURL URLWithString:nextPage relativeToURL:[NSURL URLWithString:sourceModel.HOST_URL]].absoluteString;
+            }
+            break;
         }
     }
-    [PicContentModel insertTableWithModels:suggestions];
+    
+    return nil;
+}
 
-    return [suggestions copy];
+- (NSArray<PicContentModel *> *)parseSuggestionsWithDocument:(OCGumboDocument *)document 
+                                                 sourceModel:(PicSourceModel *)sourceModel {
+    return @[];
+//    NSMutableArray *suggestions = [NSMutableArray array];
+//
+//    OCQueryObject *articleEs = document.QueryClass(@"VMUVXRX");
+//
+//    for (OCGumboElement *articleE in articleEs) {
+//        PicContentModel *contentModel = [self getContentModelWithArticleElement:articleE sourceModel:sourceModel];
+//        if (contentModel) {
+////            [contentModel insertTable];
+//            [suggestions addObject:contentModel];
+//        }
+//    }
+//    [PicContentModel insertTableWithModels:suggestions];
+//
+//    return [suggestions copy];
+}
+
+- (void)parseSuggestionsAsyncCompletion:(void (^)(NSArray<PicContentModel *> * _Nonnull))completion {
+    // SourceType3 特殊, 推荐列表是异步获取的
+    // 判空
+    if (NSStringLengthOfString(self.htmlString) == 0 || NSStringLengthOfString(self.currentHref) == 0 || self.currentDocument == nil || self.currentSourceModel == nil) {
+        PPIsBlockExecute(completion, @[]);
+        return;
+    }
+
+    // https://www.hitxhot.org/related?page=1&tag=["Pretty","Body"]&cb=recommendedFn
+    // 解析, 拿到initRelated
+    OCQueryObject *scripts = self.currentDocument.QueryElement(@"script");
+
+    NSString *tagString = nil;
+    for (OCGumboElement *scriptE in scripts) {
+        NSString *script = scriptE.text();
+        if (![script containsString:@"var initRelated="]) {
+            continue;
+        }
+        NSLog(@"script = %@", script);
+        tagString = [self extractTagString:script];
+    }
+
+    if (NSStringLengthOfString(tagString) == 0) {
+        PPIsBlockExecute(completion, @[]);
+        return;
+    }
+
+    NSString *relatedUrl = [NSString stringWithFormat:@"/related?page=1&tag=%@&cb=recommendedFn", tagString];
+    NSURL *url = [NSURL URLWithString:relatedUrl relativeToURL:[NSURL URLWithString:self.currentSourceModel.HOST_URL]];
+    if (url) {
+        [PDRequest getWithURL:url completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+            NSString *dataString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+            NSLog(@"related data = \n%@", dataString);
+            NSString *jsonString = [dataString splitStringWithLeadingString:@"recommendedFn\\(" trailingString:@"\\);" error:nil];
+            NSArray *jsonArray = [NSJSONSerialization getJsonFromString:jsonString];
+
+            NSMutableArray *suggestions = [NSMutableArray array];
+            for (NSDictionary *dict in jsonArray) {
+                NSString *href = dict[@"id"];
+                NSString *title = dict[@"title"];
+                NSString *thumbnailUrl = dict[@"image"];
+                PicContentModel *contentModel = [self createContentModelWithHref:href
+                                                                           title:title
+                                                                    thumbnailUrl:thumbnailUrl
+                                                                     sourceModel:self.currentSourceModel];
+                if (contentModel) {
+                    [suggestions addObject:contentModel];
+                }
+            }
+            [PicContentModel insertTableWithModels:suggestions];
+
+            PPIsBlockExecute(completion, suggestions);
+        }];
+    }
+}
+
+- (NSString *)extractTagString:(NSString *)htmlContent {
+    // 找到 "tag: ["
+    NSRange startRange = [htmlContent rangeOfString:@"tag: ["];
+    if (startRange.location == NSNotFound) {
+        return nil;
+    }
+    
+    // 找到对应的 "]"
+    NSRange endRange = [htmlContent rangeOfString:@"]" options:0 range:NSMakeRange(startRange.location, htmlContent.length - startRange.location)];
+    if (endRange.location == NSNotFound) {
+        return nil;
+    }
+    
+    // 提取包含方括号的完整字符串
+    NSRange contentRange = NSMakeRange(startRange.location + 5, endRange.location - startRange.location - 4);
+    return [htmlContent substringWithRange:contentRange];
 }
 
 - (NSString *)parsePageTitleWithDocument:(OCGumboDocument *)document 

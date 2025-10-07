@@ -97,7 +97,7 @@
     return [urls copy];
 }
 
-- (nullable NSString *)parseNextPageWithDocument:(OCGumboDocument *)document 
+- (nullable NSString *)parseNextPageForListWithDocument:(OCGumboDocument *)document 
                                     sourceModel:(PicSourceModel *)sourceModel {
     OCGumboElement *nextE = document.QueryID(@"pager").firstObject;
     if (!nextE) {

@@ -10,11 +10,170 @@
 
 @interface PDRequest() <NSURLSessionDelegate>
 
+@property (nonatomic, assign) BOOL proxyEnabled;
+@property (nonatomic, strong) NSString *proxyHost;
+@property (nonatomic, assign) NSInteger proxyPort;
+@property (nonatomic, strong) NSString *proxyUsername;
+@property (nonatomic, strong) NSString *proxyPassword;
+
 @end
 
 @implementation PDRequest
 
 singleton_implementation(PDRequest)
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        // 默认启用代理配置，使用你的环境变量设置
+        _proxyEnabled = YES;
+        _proxyHost = @"127.0.0.1";
+        _proxyPort = 7890;
+    }
+    return self;
+}
+
+#pragma mark - 代理配置方法
+
++ (void)setProxyEnabled:(BOOL)enabled {
+    [PDRequest sharedPDRequest].proxyEnabled = enabled;
+}
+
++ (void)setProxyHost:(NSString *)host port:(NSInteger)port {
+    PDRequest *instance = [PDRequest sharedPDRequest];
+    instance.proxyHost = host;
+    instance.proxyPort = port;
+}
+
++ (void)setProxyCredentials:(NSString *)username password:(NSString *)password {
+    PDRequest *instance = [PDRequest sharedPDRequest];
+    instance.proxyUsername = username;
+    instance.proxyPassword = password;
+}
+
++ (void)printCurrentProxyConfig {
+    PDRequest *instance = [PDRequest sharedPDRequest];
+    NSLog(@"=== 当前代理配置 ===");
+    NSLog(@"代理启用: %@", instance.proxyEnabled ? @"是" : @"否");
+    NSLog(@"代理主机: %@", instance.proxyHost ?: @"未设置");
+    NSLog(@"代理端口: %ld", (long)instance.proxyPort);
+    NSLog(@"代理用户名: %@", instance.proxyUsername ?: @"未设置");
+    NSLog(@"代理密码: %@", instance.proxyPassword ? @"已设置" : @"未设置");
+    NSLog(@"==================");
+}
+
++ (void)testProxyConnection {
+    NSLog(@"🧪 开始测试代理连接...");
+    
+    // 测试IP地址查询
+    [PDRequest getWithURL:[NSURL URLWithString:@"https://httpbin.org/ip"] completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        if (error) {
+            NSLog(@"❌ 代理测试失败: %@", error.localizedDescription);
+        } else if (data) {
+            NSString *responseString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+            NSLog(@"✅ 代理测试成功，响应: %@", responseString);
+        }
+    }];
+    
+    // 测试另一个服务
+    [PDRequest getWithURL:[NSURL URLWithString:@"https://api.ipify.org?format=json"] completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        if (error) {
+            NSLog(@"❌ 第二个代理测试失败: %@", error.localizedDescription);
+        } else if (data) {
+            NSString *responseString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+            NSLog(@"✅ 第二个代理测试成功，响应: %@", responseString);
+        }
+    }];
+}
+
++ (void)setupMacCatalystProxy {
+    NSLog(@"🍎 设置Mac Catalyst代理配置...");
+    
+    // 确保代理配置正确
+    [PDRequest setProxyEnabled:YES];
+    [PDRequest setProxyHost:@"127.0.0.1" port:7890];
+    
+    // 打印当前配置
+    [PDRequest printCurrentProxyConfig];
+    
+    // 测试连接
+    [PDRequest testProxyConnection];
+}
+
++ (void)testDifferentProxyConfigs {
+    NSLog(@"🧪 测试不同的代理配置...");
+    
+    // 测试1: 禁用代理，直接连接
+    NSLog(@"📋 测试1: 禁用代理");
+    [PDRequest setProxyEnabled:NO];
+    [PDRequest getWithURL:[NSURL URLWithString:@"https://httpbin.org/ip"] completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        if (error) {
+            NSLog(@"❌ 直接连接失败: %@", error.localizedDescription);
+        } else {
+            NSString *responseString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+            NSLog(@"✅ 直接连接成功: %@", responseString);
+        }
+        
+        // 测试2: 启用代理
+        NSLog(@"📋 测试2: 启用代理");
+        [PDRequest setProxyEnabled:YES];
+        [PDRequest setProxyHost:@"127.0.0.1" port:7890];
+        
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [PDRequest getWithURL:[NSURL URLWithString:@"https://httpbin.org/ip"] completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+                if (error) {
+                    NSLog(@"❌ 代理连接失败: %@", error.localizedDescription);
+                } else {
+                    NSString *responseString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+                    NSLog(@"✅ 代理连接成功: %@", responseString);
+                }
+            }];
+        });
+    }];
+}
+
+#pragma mark - 创建带代理配置的Session
+
+- (NSURLSession *)createSessionWithConfiguration {
+    NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
+    config.timeoutIntervalForRequest = 15; // 增加超时时间
+    
+    // 如果启用了代理，配置代理设置
+    if (self.proxyEnabled && self.proxyHost && self.proxyPort > 0) {
+        NSMutableDictionary *proxyDict = [NSMutableDictionary dictionary];
+        
+        // 使用最兼容的代理配置方式
+        // HTTP代理配置
+        proxyDict[@"HTTPEnable"] = @YES;
+        proxyDict[@"HTTPProxy"] = self.proxyHost;
+        proxyDict[@"HTTPPort"] = @(self.proxyPort);
+        
+        // HTTPS代理配置 - 使用CONNECT方法
+        proxyDict[@"HTTPSEnable"] = @YES;
+        proxyDict[@"HTTPSProxy"] = self.proxyHost;
+        proxyDict[@"HTTPSPort"] = @(self.proxyPort);
+        
+        // 添加额外的配置选项
+        proxyDict[@"HTTPUser"] = @"";  // 空用户名
+        proxyDict[@"HTTPPassword"] = @"";  // 空密码
+        
+        // 如果有认证信息，添加认证
+        if (self.proxyUsername && self.proxyPassword) {
+            proxyDict[@"HTTPUser"] = self.proxyUsername;
+            proxyDict[@"HTTPPassword"] = self.proxyPassword;
+        }
+        
+        config.connectionProxyDictionary = proxyDict;
+        
+        // 调试日志
+        NSLog(@"🔧 代理配置已应用: %@:%ld", self.proxyHost, (long)self.proxyPort);
+        NSLog(@"🔧 代理字典: %@", proxyDict);
+    } else {
+        NSLog(@"⚠️ 代理未启用或配置不完整");
+    }
+    
+    return [NSURLSession sessionWithConfiguration:config delegate:self delegateQueue:nil];
+}
 
 + (NSURLSessionDataTask *)getWithURL:(NSURL *)URL completionHandler:(void (^)(NSData * _Nullable, NSURLResponse * _Nullable, NSError * _Nullable))completionHandler {
     return [PDRequest getWithURL:URL isPhone:YES completionHandler:completionHandler];
@@ -32,10 +191,8 @@ singleton_implementation(PDRequest)
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:URL];
     [request setValue:userAgent forHTTPHeaderField:@"User-agent"];
 
-    NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
-    config.timeoutIntervalForRequest = 10;
-    NSURLSession *session = [NSURLSession sessionWithConfiguration:config delegate:[PDRequest sharedPDRequest] delegateQueue:nil];// [NSURLSession sessionWithConfiguration:config];
-    // [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration] delegate:[PDRequest sharedPDRequest] delegateQueue:nil];
+    // 使用新的代理配置方法创建session
+    NSURLSession *session = [[PDRequest sharedPDRequest] createSessionWithConfiguration];
     NSURLSessionDataTask *dataTask = [session dataTaskWithRequest:request completionHandler:completionHandler];
     [dataTask resume];
     return dataTask;
@@ -100,8 +257,9 @@ singleton_implementation(PDRequest)
     [mutableRequest setHTTPMethod:@"POST"];
     [mutableRequest setValue:@"application/x-www-form-urlencoded;charset=UTF-8" forHTTPHeaderField:@"Content-Type"];
     [mutableRequest setHTTPBody:[paramsString dataUsingEncoding:NSUTF8StringEncoding]];
-    NSURLSession *session = [NSURLSession sharedSession];
-    // [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration] delegate:[PDRequest sharedPDRequest] delegateQueue:nil];
+    
+    // 使用新的代理配置方法创建session
+    NSURLSession *session = [[PDRequest sharedPDRequest] createSessionWithConfiguration];
 
     PDBlockSelf
     NSURLSessionDataTask *dataTask = [session dataTaskWithRequest:mutableRequest completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
@@ -147,6 +305,22 @@ singleton_implementation(PDRequest)
 
 - (void)URLSession:(NSURLSession *)session didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential * _Nullable credential))completionHandler {
     NSLog(@"didReceiveChallenge ");
+    
+    // 处理代理认证
+    if (challenge.protectionSpace.isProxy) {
+        NSLog(@"proxy authentication challenge");
+        if (self.proxyUsername && self.proxyPassword) {
+            NSURLCredential *credential = [NSURLCredential credentialWithUser:self.proxyUsername 
+                                                                   password:self.proxyPassword 
+                                                                persistence:NSURLCredentialPersistenceForSession];
+            completionHandler(NSURLSessionAuthChallengeUseCredential, credential);
+            return;
+        } else {
+            completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
+            return;
+        }
+    }
+    
     if ([challenge.protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust]) {
         NSLog(@"server ---------");
         //        [challenge.sender useCredential:[NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust] forAuthenticationChallenge:challenge];

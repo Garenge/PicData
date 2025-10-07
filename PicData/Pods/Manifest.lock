@@ -133,10 +133,10 @@ PODS:
   - PPSocket (0.1.1):
     - CocoaAsyncSocket
     - PPCustomAsyncOperation
-  - PPToolKit (0.1.6):
+  - PPToolKit (0.1.8):
     - Masonry
-    - PPToolKit/Core (= 0.1.6)
-  - PPToolKit/Core (0.1.6):
+    - PPToolKit/Core (= 0.1.8)
+  - PPToolKit/Core (0.1.8):
     - Masonry
   - PromisesObjC (2.4.0)
   - RecaptchaInterop (100.0.0)
@@ -262,7 +262,7 @@ SPEC CHECKSUMS:
   PPCatalystTool: 8c08ff72f6f79de7b37f4f04b5c0f346c535a65e
   PPCustomAsyncOperation: a9901452d6d5724d2c075535f7a16198a23eb8ee
   PPSocket: e3b5e0c8a045fc979e1a22e35e3679aa2a2e371e
-  PPToolKit: 50fce29b51ac8552df52758944c99559cea53463
+  PPToolKit: f633ed574a5f5484b216ef2c80da333a1600c5bb
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   RecaptchaInterop: 7d1a4a01a6b2cb1610a47ef3f85f0c411434cb21
   SDWebImage: 0905f1b7760fc8ac4198cae0036600d67478751e

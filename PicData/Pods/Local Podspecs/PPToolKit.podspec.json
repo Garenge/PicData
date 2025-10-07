@@ -1,6 +1,6 @@
 {
   "name": "PPToolKit",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "summary": "Some tools for iOS project created by pp.",
   "description": "TODO: Add long description of the pod here.",
   "homepage": "https://github.com/Garenge/PPToolKit",
@@ -13,7 +13,7 @@
   },
   "source": {
     "git": "https://github.com/Garenge/PPToolKit.git",
-    "tag": "0.1.6"
+    "tag": "0.1.8"
   },
   "pod_target_xcconfig": {
     "EXCLUDED_ARCHS[sdk=iphonesimulator*]": "arm64"

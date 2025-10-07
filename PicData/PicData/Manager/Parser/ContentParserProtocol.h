@@ -31,12 +31,18 @@ NS_ASSUME_NONNULL_BEGIN
                                            sourceModel:(PicSourceModel *)sourceModel;
 
 /// 解析下一页链接
-- (nullable NSString *)parseNextPageWithDocument:(OCGumboDocument *)document 
+- (nullable NSString *)parseNextPageForListWithDocument:(OCGumboDocument *)document
+                                    sourceModel:(PicSourceModel *)sourceModel;
+                                    /// 解析下一页链接
+- (nullable NSString *)parseNextPageForDetailWithDocument:(OCGumboDocument *)document 
                                     sourceModel:(PicSourceModel *)sourceModel;
 
 /// 解析推荐内容
 - (NSArray<PicContentModel *> *)parseSuggestionsWithDocument:(OCGumboDocument *)document 
                                                  sourceModel:(PicSourceModel *)sourceModel;
+
+/// 异步解析推荐内容
+- (void)parseSuggestionsAsyncCompletion:(void(^)(NSArray<PicContentModel *> *models))completion;
 
 /// 解析页面标题
 - (NSString *)parsePageTitleWithDocument:(OCGumboDocument *)document 
@@ -49,6 +55,29 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// 获取HTML编码类型
 - (NSString *)getHtmlStringWithData:(NSData *)data;
+
+#pragma mark - 便捷方法（使用内部存储的上下文）
+
+/// 设置解析上下文
+- (void)setParseContextWithDocument:(OCGumboDocument *)document 
+                        sourceModel:(PicSourceModel *)sourceModel 
+                               href:(NSString *)href
+                          htmlString:(NSString *)htmlString;
+
+/// 使用内部上下文解析详情页图片
+- (NSArray<NSString *> *)parseDetailImages;
+
+/// 使用内部上下文解析下一页链接（列表页）
+- (nullable NSString *)parseNextPageForList;
+
+/// 使用内部上下文解析下一页链接（详情页）
+- (nullable NSString *)parseNextPageForDetail;
+
+/// 使用内部上下文解析推荐内容
+- (NSArray<PicContentModel *> *)parseSuggestions;
+
+/// 使用内部上下文解析页面标题
+- (NSString *)parsePageTitle;
 
 @end
 

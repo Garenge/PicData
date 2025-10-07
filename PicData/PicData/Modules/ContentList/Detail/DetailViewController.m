@@ -30,6 +30,9 @@
 @property (nonatomic, strong) EEBackView *preGesView;
 @property (nonatomic, strong) EEBackView *nextGesView;
 
+@property (nonatomic, strong, nullable) id<ContentParserProtocol> parser;
+@property (nonatomic, assign) BOOL needToParserSuggestionData;
+
 @end
 
 @implementation DetailViewController
@@ -226,6 +229,7 @@
     
     PDBlockSelf
     tableView.mj_header = [MJRefreshNormalHeader headerWithRefreshingBlock:^{
+        weakSelf.needToParserSuggestionData = YES;
         [weakSelf loadDetailData];
     }];
 }
@@ -333,12 +337,17 @@
     self.detailModel.nextUrl = self.detailModel.currentUrl;
 
     PDBlockSelf
-    [ContentParserManager parseDetailWithHtmlString:htmlString href:self.contentModel.href sourceModel:self.sourceModel preNextUrl:self.detailModel.nextUrl needSuggest:YES completeHandler:^(NSArray<NSString *> * _Nonnull imageUrls, NSString * _Nonnull nextPage, NSArray<PicContentModel *> * _Nullable suggestArray, NSString * _Nullable contentTitle) {
+    [ContentParserManager parseDetailWithHtmlString:htmlString href:self.contentModel.href sourceModel:self.sourceModel preNextUrl:self.detailModel.nextUrl needSuggest:YES completeHandler:^(NSArray<NSString *> * _Nonnull imageUrls, NSString * _Nonnull nextPage, NSArray<PicContentModel *> * _Nullable suggestArray, NSString * _Nullable contentTitle, id<ContentParserProtocol>  _Nullable parser) {
+
+        weakSelf.parser = parser;
 
         weakSelf.detailModel.contentImgsUrl = imageUrls;
         weakSelf.detailModel.nextUrl = nextPage;
         weakSelf.detailModel.suggesArray = suggestArray;
 
+        weakSelf.needToParserSuggestionData = suggestArray.count == 0;
+        [weakSelf tryToParserSuggestionData];
+        
         if (contentTitle.length > 0 && weakSelf.detailModel.canUpdateTitle) {
             weakSelf.detailModel.detailTitle = contentTitle;
             weakSelf.detailModel.canUpdateTitle = NO;
@@ -346,7 +355,20 @@
         }
 
     }];
+}
 
+- (void)tryToParserSuggestionData {
+    if (!self.needToParserSuggestionData) {
+        return;
+    }
+    PDBlockSelf
+    [self.parser parseSuggestionsAsyncCompletion:^(NSArray<PicContentModel *> * _Nonnull models) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            weakSelf.detailModel.suggesArray = models;
+            weakSelf.needToParserSuggestionData = NO;
+            [weakSelf.tableView reloadSection:0 withRowAnimation:UITableViewRowAnimationNone];
+        });
+    }];
 }
 
 #pragma mark - Action

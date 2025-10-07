@@ -1,6 +1,7 @@
 //
 //  ContentParserManager+Parser.m
 //  PicData
+
 //
 //  Created by 鹏鹏 on 2022/5/28.
 //  Copyright © 2022 garenge. All rights reserved.
@@ -45,7 +46,7 @@
     results = [self refreshContentListDownloadStatus:results];
 
     // 获取下一页链接
-    NSString *nextPage = [parser parseNextPageWithDocument:document sourceModel:sourceModel];
+    NSString *nextPage = [parser parseNextPageForListWithDocument:document sourceModel:sourceModel];
     NSURL *nextPageURL = nil;
     
     if (nextPage.length > 0) {
@@ -105,10 +106,10 @@
                        sourceModel:(PicSourceModel *)sourceModel 
                        preNextUrl:(NSString *)preNextUrl 
                        needSuggest:(BOOL)needSuggest 
-                   completeHandler:(void (^)(NSArray<NSString *> * _Nonnull, NSString * _Nonnull, NSArray<PicContentModel *> * _Nullable, NSString * _Nullable))completeHandler {
+                   completeHandler:(void (^)(NSArray<NSString *> * _Nonnull, NSString * _Nonnull, NSArray<PicContentModel *> * _Nullable, NSString * _Nullable, id<ContentParserProtocol> _Nullable))completeHandler {
 
     if (htmlString.length == 0) {
-        PPIsBlockExecute(completeHandler, @[], @"", @[], @"");
+        PPIsBlockExecute(completeHandler, @[], @"", @[], @"", nil);
         return;
     }
 
@@ -117,15 +118,20 @@
     // 获取对应的解析器
     id<ContentParserProtocol> parser = [ContentParserFactory parserForSourceType:sourceModel.sourceType];
     if (!parser) {
-        PPIsBlockExecute(completeHandler, @[], @"", @[], @"");
+        PPIsBlockExecute(completeHandler, @[], @"", @[], @"", nil);
         return;
+    }
+
+    // 设置解析器上下文
+    if ([parser respondsToSelector:@selector(setParseContextWithDocument:sourceModel:href:htmlString:)]) {
+        [parser setParseContextWithDocument:document sourceModel:sourceModel href:href htmlString:htmlString];
     }
 
     // 解析详情页图片
     NSArray<NSString *> *urls = [parser parseDetailImagesWithDocument:document sourceModel:sourceModel];
     
     // 解析下一页链接
-    NSString *nextPage = [parser parseNextPageWithDocument:document sourceModel:sourceModel] ?: @"";
+    NSString *nextPage = [parser parseNextPageForDetailWithDocument:document sourceModel:sourceModel] ?: @"";
     
     // 解析推荐内容
     NSArray<PicContentModel *> *suggestions = @[];
@@ -138,7 +144,7 @@
     // 解析页面标题
     NSString *contentTitle = [parser parsePageTitleWithDocument:document href:href sourceModel:sourceModel];
 
-    PPIsBlockExecute(completeHandler, urls, nextPage, suggestions, contentTitle);
+    PPIsBlockExecute(completeHandler, urls, nextPage, suggestions, contentTitle, parser);
 }
 
 #pragma mark tag, 标签数据

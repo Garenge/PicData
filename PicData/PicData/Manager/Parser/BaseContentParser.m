@@ -14,6 +14,18 @@
 
 @implementation BaseContentParser
 
+#pragma mark - 解析上下文设置
+
+- (void)setParseContextWithDocument:(OCGumboDocument *)document 
+                        sourceModel:(PicSourceModel *)sourceModel 
+                               href:(NSString *)href
+                          htmlString:(NSString *)htmlString {
+    self.currentDocument = document;
+    self.currentSourceModel = sourceModel;
+    self.currentHref = href;
+    self.htmlString = htmlString;
+}
+
 #pragma mark - ContentParserProtocol (默认实现)
 
 - (NSString *)getHtmlStringWithData:(NSData *)data {
@@ -38,16 +50,24 @@
     return @[];
 }
 
-- (nullable NSString *)parseNextPageWithDocument:(OCGumboDocument *)document 
+- (nullable NSString *)parseNextPageForListWithDocument:(OCGumboDocument *)document 
                                     sourceModel:(PicSourceModel *)sourceModel {
     // 子类需要重写此方法
     return nil;
+}
+
+- (NSString *)parseNextPageForDetailWithDocument:(OCGumboDocument *)document sourceModel:(PicSourceModel *)sourceModel {
+    return [self parseNextPageForListWithDocument:document sourceModel:sourceModel];
 }
 
 - (NSArray<PicContentModel *> *)parseSuggestionsWithDocument:(OCGumboDocument *)document 
                                                  sourceModel:(PicSourceModel *)sourceModel {
     // 子类需要重写此方法
     return @[];
+}
+
+- (void)parseSuggestionsAsyncCompletion:(void (^)(NSArray<PicContentModel *> * _Nonnull))completion {
+    PPIsBlockExecute(completion, @[]);
 }
 
 - (NSString *)parsePageTitleWithDocument:(OCGumboDocument *)document 
@@ -97,6 +117,43 @@
     thumbnailUrl = [thumbnailUrl stringByReplacingOccurrencesOfString:@"i0.wp.com/" withString:@""];
     
     return thumbnailUrl;
+}
+
+#pragma mark - 便捷方法（使用内部存储的上下文）
+
+- (NSArray<NSString *> *)parseDetailImages {
+    if (!self.currentDocument || !self.currentSourceModel) {
+        return @[];
+    }
+    return [self parseDetailImagesWithDocument:self.currentDocument sourceModel:self.currentSourceModel];
+}
+
+- (nullable NSString *)parseNextPageForList {
+    if (!self.currentDocument || !self.currentSourceModel) {
+        return nil;
+    }
+    return [self parseNextPageForListWithDocument:self.currentDocument sourceModel:self.currentSourceModel];
+}
+
+- (nullable NSString *)parseNextPageForDetail {
+    if (!self.currentDocument || !self.currentSourceModel) {
+        return nil;
+    }
+    return [self parseNextPageForDetailWithDocument:self.currentDocument sourceModel:self.currentSourceModel];
+}
+
+- (NSArray<PicContentModel *> *)parseSuggestions {
+    if (!self.currentDocument || !self.currentSourceModel) {
+        return @[];
+    }
+    return [self parseSuggestionsWithDocument:self.currentDocument sourceModel:self.currentSourceModel];
+}
+
+- (NSString *)parsePageTitle {
+    if (!self.currentDocument || !self.currentSourceModel || !self.currentHref) {
+        return @"";
+    }
+    return [self parsePageTitleWithDocument:self.currentDocument href:self.currentHref sourceModel:self.currentSourceModel];
 }
 
 @end 
