@@ -23,6 +23,19 @@
     [hud hideAnimated:YES afterDelay:delay];
 }
 
++ (void)showInfoOnView:(UIView *)view WithStatus:(NSString *)status afterDelay:(NSTimeInterval)delay allowUserInteraction:(BOOL)allowUserInteraction {
+    [MBProgressHUD hideHUDForView:view animated:YES];
+
+    MBProgressHUD *hud = [self showHUDAddedTo:view animated:YES];
+    hud.mode = MBProgressHUDModeText;
+    hud.square = NO;
+    hud.label.text = status;
+
+    // ✅ 控制是否允许点击穿透
+    hud.userInteractionEnabled = !allowUserInteraction;
+
+    [hud hideAnimated:YES afterDelay:delay];
+}
 
 + (void)showHUDAddedTo:(UIView *)view WithStatus:(NSString *)status {
     [MBProgressHUD hideHUDForView:view animated:YES];
