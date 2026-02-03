@@ -26,7 +26,8 @@ singleton_implementation(PDRequest)
     self = [super init];
     if (self) {
         // 默认启用代理配置，使用你的环境变量设置
-        _proxyEnabled = YES;
+        _proxyEnabled = NO;
+//        _proxyEnabled = YES;
         _proxyHost = @"127.0.0.1";
         _proxyPort = 7890;
     }
@@ -135,6 +136,7 @@ singleton_implementation(PDRequest)
 #pragma mark - 创建带代理配置的Session
 
 - (NSURLSession *)createSessionWithConfiguration {
+    return [NSURLSession sharedSession];
     NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
     config.timeoutIntervalForRequest = 15; // 增加超时时间
     
