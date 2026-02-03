@@ -41,10 +41,15 @@
 - (void)requestToDownloadFile {
     __weak typeof(self) weakSelf = self;
 
+    NSLog(@"======== 准备下载文件, 地址: %@", self.url);
+
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:self.url]];
     for (NSString *key in self.headers.allKeys) {
         [request setValue:self.headers[key] forHTTPHeaderField:key];
     }
+
+    // http不使用缓存策略, 每次都重新请求
+    [request setValue:@"no-cache" forHTTPHeaderField:@"Cache-Control"];
     NSURLSessionDownloadTask *downloadTask = [[NSURLSession sharedSession] downloadTaskWithRequest:request completionHandler:^(NSURL * _Nullable location, NSURLResponse * _Nullable response, NSError * _Nullable error) {
 
         PPIsBlockExecute(weakSelf.downloadFinishedBlock, location, response, error);
