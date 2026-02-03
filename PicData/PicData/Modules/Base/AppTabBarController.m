@@ -51,18 +51,18 @@
 
 - (void)prepare {
 
-    if (@available(macCatalyst 18.0, *)) {
-        self.mode = UITabBarControllerModeTabSidebar;
-    } else {
-            // Fallback on earlier versions
-    }
-    
-    if (@available(macCatalyst 17.0, *)) {
-        self.traitOverrides.horizontalSizeClass = UIUserInterfaceSizeClassCompact;
-    } else {
-            // Fallback on earlier versions
-    }
-    
+//    if (@available(macCatalyst 18.0, *)) {
+//        self.mode = UITabBarControllerModeTabSidebar;
+//    } else {
+//            // Fallback on earlier versions
+//    }
+//    
+//    if (@available(macCatalyst 17.0, *)) {
+//        self.traitOverrides.horizontalSizeClass = UIUserInterfaceSizeClassCompact;
+//    } else {
+//            // Fallback on earlier versions
+//    }
+//    
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(receiveNoticeOfDownloadPath:) name:NOTICECHECKDOWNLOADPATHKEY object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(notificationThatInitHostModelsFailed:) name:NotificationNameInitHostModelsFailed object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(notificationThatClearedAllFiles:) name:NotificationNameClearedAllFiles object:nil];
