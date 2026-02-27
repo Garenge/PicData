@@ -121,6 +121,7 @@
 		9DFA897C2BDE83D800268626 /* SharedListViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA897B2BDE83D800268626 /* SharedListViewController.m */; };
 		9DFA897F2BDE891500268626 /* NSFileManager+Ex.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA897E2BDE891500268626 /* NSFileManager+Ex.m */; };
 		9DFA89822BDE89F200268626 /* SharedListTableViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA89812BDE89F200268626 /* SharedListTableViewCell.m */; };
+		9DPDT0012E5A1A0000C85372 /* PDTabBarController.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DPDT0022E5A1A0000C85372 /* PDTabBarController.m */; };
 		A5A82B4C8681983B19BDEC52 /* Pods_PicData.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AE3AF7DEFDCABCA98704D38C /* Pods_PicData.framework */; };
 /* End PBXBuildFile section */
 
@@ -362,6 +363,8 @@
 		9DFA897E2BDE891500268626 /* NSFileManager+Ex.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSFileManager+Ex.m"; sourceTree = "<group>"; };
 		9DFA89802BDE89F200268626 /* SharedListTableViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SharedListTableViewCell.h; sourceTree = "<group>"; };
 		9DFA89812BDE89F200268626 /* SharedListTableViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SharedListTableViewCell.m; sourceTree = "<group>"; };
+		9DPDT0022E5A1A0000C85372 /* PDTabBarController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PDTabBarController.m; sourceTree = "<group>"; };
+		9DPDT0032E5A1A0000C85372 /* PDTabBarController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PDTabBarController.h; sourceTree = "<group>"; };
 		AE3AF7DEFDCABCA98704D38C /* Pods_PicData.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PicData.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D90F68A13B5C2B86263A6017 /* Pods-PicData.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PicData.debug.xcconfig"; path = "Target Support Files/Pods-PicData/Pods-PicData.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -562,6 +565,7 @@
 		33E1ABE02822BA9F00AA92CB /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				9DPDT0042E5A1A0000C85372 /* PDTabBar */,
 				333ECEF725F71DFB00762219 /* ThirdParty */,
 				9DE95CB8244C3FDC00E31735 /* Categories */,
 			);
@@ -952,6 +956,15 @@
 			path = ShareList;
 			sourceTree = "<group>";
 		};
+		9DPDT0042E5A1A0000C85372 /* PDTabBar */ = {
+			isa = PBXGroup;
+			children = (
+				9DPDT0032E5A1A0000C85372 /* PDTabBarController.h */,
+				9DPDT0022E5A1A0000C85372 /* PDTabBarController.m */,
+			);
+			path = PDTabBar;
+			sourceTree = "<group>";
+		};
 		E272491668D574E526B80971 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -1082,9 +1095,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-PicData/Pods-PicData-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-PicData/Pods-PicData-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1099,9 +1116,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-PicData/Pods-PicData-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-PicData/Pods-PicData-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1117,6 +1138,7 @@
 			files = (
 				9DB107FE2A24AED400131F45 /* SocketMessageModel.m in Sources */,
 				9D96DCC525A37CBB0045D123 /* PicClassifyTagsViewCell.m in Sources */,
+				9DPDT0012E5A1A0000C85372 /* PDTabBarController.m in Sources */,
 				9DC94CA32552ECFE008ACAF8 /* AppTabBarController.m in Sources */,
 				9DC94CAB2552F7E0008ACAF8 /* LocalFileListVC.m in Sources */,
 				9D0A4A4225FE54F700E505AC /* PicContentViewFlowLayout.m in Sources */,
@@ -1346,12 +1368,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 7;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = E7W6597ZYH;
+				DEVELOPMENT_TEAM = 5RU564CZVG;
 				ENABLE_BITCODE = NO;
 				EXCLUDED_ARCHS = "";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/$(PRODUCT_NAME)/Others/PrefixHeader.pch";
 				INFOPLIST_FILE = "$(SRCROOT)/PicData/Others/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1415,7 +1437,7 @@
 					"-ObjC",
 					"-all_load",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = per.garenge.picdata;
+				PRODUCT_BUNDLE_IDENTIFIER = per.demo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1442,12 +1464,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 7;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = E7W6597ZYH;
+				DEVELOPMENT_TEAM = 5RU564CZVG;
 				ENABLE_BITCODE = NO;
 				EXCLUDED_ARCHS = "";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/$(PRODUCT_NAME)/Others/PrefixHeader.pch";
 				INFOPLIST_FILE = "$(SRCROOT)/PicData/Others/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1511,7 +1533,7 @@
 					"-ObjC",
 					"-all_load",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = per.garenge.picdata;
+				PRODUCT_BUNDLE_IDENTIFIER = per.demo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
