@@ -1,14 +1,43 @@
 import 'package:flutter/material.dart';
 
+import 'pages/home_page.dart';
+import 'services/pic_net_service.dart';
+
 void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await PicNetService.instance.load();
+    setState(() {
+      _initialized = true;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (!_initialized) {
+      return const MaterialApp(
+        home: Scaffold(body: Center(child: CircularProgressIndicator())),
+      );
+    }
+
     return MaterialApp(
       title: 'PicData',
       theme: ThemeData(
@@ -16,28 +45,6 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const HomePage(),
-    );
-  }
-}
-
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: TextButton(
-          onPressed: () {
-            // TODO: 实现后续导航逻辑
-          },
-          child: const Text('导航'),
-        ),
-        title: const Text('Home_page'),
-      ),
-      body: const Center(
-        child: Text('Home_page 内容区域'),
-      ),
     );
   }
 }
