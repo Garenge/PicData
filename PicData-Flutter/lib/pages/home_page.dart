@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lpinyin/lpinyin.dart';
 
+import '../models/pic_net_models.dart';
 import '../services/pic_net_service.dart';
 
 enum HomeViewType { tags, list }
@@ -15,6 +16,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   HomeViewType _viewType = HomeViewType.tags;
   final ScrollController _listController = ScrollController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void dispose() {
@@ -29,6 +31,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final hosts = PicNetService.instance.hosts;
     final searchKeys = PicNetService.instance.globalSearchKeys;
 
     // 加载完成后，简单输出 searchKeys，方便调试和后续使用
@@ -36,12 +39,13 @@ class _HomePageState extends State<HomePage> {
     print('PicNetConfig searchKeys count: ${searchKeys.length}');
 
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         leading: IconButton(
           tooltip: '导航站点',
           icon: const Icon(Icons.public),
           onPressed: () {
-            // TODO: 实现后续导航逻辑
+            _scaffoldKey.currentState?.openDrawer();
           },
         ),
         title: const Text('导航'),
@@ -60,6 +64,11 @@ class _HomePageState extends State<HomePage> {
             },
           ),
         ],
+      ),
+      drawer: Drawer(
+        child: SafeArea(
+          child: _buildHostsDrawerList(hosts),
+        ),
       ),
       body: _viewType == HomeViewType.tags
           ? _buildTagsView(searchKeys)
@@ -163,6 +172,26 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildHostsDrawerList(List<PicHost> hosts) {
+    if (hosts.isEmpty) {
+      return const Center(child: Text('暂无站点'));
+    }
+    return ListView.builder(
+      itemCount: hosts.length,
+      itemBuilder: (context, index) {
+        final host = hosts[index];
+        return ListTile(
+          title: Text(host.title),
+          subtitle: Text(host.hostUrl ?? ''),
+          onTap: () {
+            // ignore: avoid_print
+            print('Host tapped: ${host.title} - ${host.hostUrl ?? ''}');
+          },
+        );
+      },
     );
   }
 }
