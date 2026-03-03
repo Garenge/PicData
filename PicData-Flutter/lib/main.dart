@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'pages/home_page.dart';
+import 'pages/Home/home_page.dart';
 import 'services/pic_net_service.dart';
 
 void main() {

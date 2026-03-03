@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lpinyin/lpinyin.dart';
 
-import '../models/pic_net_models.dart';
-import '../services/pic_net_service.dart';
+import '../../models/pic_net_models.dart';
+import '../../services/pic_net_service.dart';
+import 'hosts_drawer.dart';
 
 enum HomeViewType { tags, list }
 
@@ -16,7 +17,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   HomeViewType _viewType = HomeViewType.tags;
   final ScrollController _listController = ScrollController();
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void dispose() {
@@ -33,19 +33,23 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final hosts = PicNetService.instance.hosts;
     final searchKeys = PicNetService.instance.globalSearchKeys;
+    final selectedHost = PicNetService.instance.selectedHost;
 
     // 加载完成后，简单输出 searchKeys，方便调试和后续使用
     // ignore: avoid_print
     print('PicNetConfig searchKeys count: ${searchKeys.length}');
 
     return Scaffold(
-      key: _scaffoldKey,
       appBar: AppBar(
-        leading: IconButton(
-          tooltip: '导航站点',
-          icon: const Icon(Icons.public),
-          onPressed: () {
-            _scaffoldKey.currentState?.openDrawer();
+        leading: Builder(
+          builder: (context) {
+            return IconButton(
+              tooltip: '导航站点',
+              icon: const Icon(Icons.public),
+              onPressed: () {
+                Scaffold.of(context).openDrawer();
+              },
+            );
           },
         ),
         title: const Text('导航'),
@@ -67,7 +71,17 @@ class _HomePageState extends State<HomePage> {
       ),
       drawer: Drawer(
         child: SafeArea(
-          child: _buildHostsDrawerList(hosts),
+          child: HostsDrawer(
+            hosts: hosts,
+            selectedHost: selectedHost,
+            onHostTap: (host) {
+              // ignore: avoid_print
+              print('Host tapped: ${host.title} - ${host.hostUrl ?? ''}');
+              PicNetService.instance.setSelectedHost(host);
+              setState(() {});
+              Navigator.of(context).pop();
+            },
+          ),
         ),
       ),
       body: _viewType == HomeViewType.tags
@@ -172,26 +186,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildHostsDrawerList(List<PicHost> hosts) {
-    if (hosts.isEmpty) {
-      return const Center(child: Text('暂无站点'));
-    }
-    return ListView.builder(
-      itemCount: hosts.length,
-      itemBuilder: (context, index) {
-        final host = hosts[index];
-        return ListTile(
-          title: Text(host.title),
-          subtitle: Text(host.hostUrl ?? ''),
-          onTap: () {
-            // ignore: avoid_print
-            print('Host tapped: ${host.title} - ${host.hostUrl ?? ''}');
-          },
-        );
-      },
     );
   }
 }

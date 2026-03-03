@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:lpinyin/lpinyin.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/pic_net_models.dart';
 
@@ -10,13 +11,18 @@ class PicNetService {
 
   static final PicNetService instance = PicNetService._internal();
 
+  static const _selectedHostMarkKey = 'selected_host_mark';
+
   PicNetConfig? _config;
+  PicHost? _selectedHost;
 
   PicNetConfig? get config => _config;
 
   List<PicHost> get hosts => _config?.hosts ?? <PicHost>[];
 
   List<String> get globalSearchKeys => _config?.globalSearchKeys ?? <String>[];
+
+  PicHost? get selectedHost => _selectedHost;
 
   Future<void> load() async {
     final jsonStr = await rootBundle.loadString('assets/config/PicNet.json');
@@ -32,6 +38,39 @@ class PicNetService {
       });
     }
 
+    await _initSelectedHost();
+
     globalPicNetConfig = _config;
+  }
+
+  Future<void> _initSelectedHost() async {
+    final visibleHosts =
+        hosts.where((h) => h.prepared == true).toList(growable: false);
+    if (visibleHosts.isEmpty) {
+      _selectedHost = null;
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final savedMark = prefs.getString(_selectedHostMarkKey);
+
+    PicHost? matched;
+    if (savedMark != null && savedMark.isNotEmpty) {
+      matched = visibleHosts.firstWhere(
+        (h) => h.mark == savedMark,
+        orElse: () => visibleHosts.first,
+      );
+    } else {
+      matched = visibleHosts.first;
+    }
+
+    _selectedHost = matched;
+    await prefs.setString(_selectedHostMarkKey, matched.mark ?? '');
+  }
+
+  Future<void> setSelectedHost(PicHost host) async {
+    _selectedHost = host;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_selectedHostMarkKey, host.mark ?? '');
   }
 }
