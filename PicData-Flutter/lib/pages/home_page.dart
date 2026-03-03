@@ -37,20 +37,19 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: TextButton(
+        leading: IconButton(
+          tooltip: '导航站点',
+          icon: const Icon(Icons.public),
           onPressed: () {
             // TODO: 实现后续导航逻辑
           },
-          child: const Text('导航'),
         ),
         title: const Text('导航'),
         actions: [
           IconButton(
             tooltip: _viewType == HomeViewType.tags ? '切换到列表' : '切换到标签',
             icon: Icon(
-              _viewType == HomeViewType.tags
-                  ? Icons.list
-                  : Icons.label_important,
+              _viewType == HomeViewType.tags ? Icons.list : Icons.layers,
             ),
             onPressed: () {
               setState(() {
