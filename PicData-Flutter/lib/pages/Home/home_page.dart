@@ -17,6 +17,14 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   HomeViewType _viewType = HomeViewType.tags;
   final ScrollController _listController = ScrollController();
+  PicHost? _selectedHost;
+
+  @override
+  void initState() {
+    super.initState();
+    // 首次进入时同步当前服务
+    _selectedHost = PicNetService.instance.selectedHost;
+  }
 
   @override
   void dispose() {
@@ -32,12 +40,27 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final hosts = PicNetService.instance.hosts;
-    final searchKeys = PicNetService.instance.globalSearchKeys;
-    final selectedHost = PicNetService.instance.selectedHost;
+    final selectedHost = _selectedHost ?? PicNetService.instance.selectedHost;
 
-    // 加载完成后，简单输出 searchKeys，方便调试和后续使用
+    // 优先使用当前选中服务的 searchKeys，若为空则回退到全局 searchKeys
+    List<String> searchKeys;
+    if (selectedHost != null && selectedHost.searchKeys.isNotEmpty) {
+      searchKeys = [...selectedHost.searchKeys];
+    } else {
+      searchKeys = [...PicNetService.instance.globalSearchKeys];
+    }
+
+    // 按拼音排序，保持展示顺序稳定
+    searchKeys.sort((a, b) {
+      final pa = PinyinHelper.getPinyinE(a, separator: '', defPinyin: a);
+      final pb = PinyinHelper.getPinyinE(b, separator: '', defPinyin: b);
+      return pa.compareTo(pb);
+    });
+
+    // 简单输出当前数据源信息，方便调试
     // ignore: avoid_print
-    print('PicNetConfig searchKeys count: ${searchKeys.length}');
+    print(
+        'Home searchKeys count: ${searchKeys.length}, from host: ${selectedHost?.mark ?? 'global'}');
 
     return Scaffold(
       appBar: AppBar(
@@ -78,7 +101,9 @@ class _HomePageState extends State<HomePage> {
               // ignore: avoid_print
               print('Host tapped: ${host.title} - ${host.hostUrl ?? ''}');
               PicNetService.instance.setSelectedHost(host);
-              setState(() {});
+              setState(() {
+                _selectedHost = host;
+              });
               Navigator.of(context).pop();
             },
           ),

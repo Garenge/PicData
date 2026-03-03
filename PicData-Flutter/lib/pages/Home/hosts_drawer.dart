@@ -17,6 +17,9 @@ class HostsDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     final visibleHosts = hosts
         .where((h) => h.prepared == true)
         .toList(growable: false);
@@ -45,23 +48,29 @@ class HostsDrawer extends StatelessWidget {
               final mark = host.mark ?? '';
               final tips = host.tips ?? '';
               final isSelected =
-                  selectedHost != null && selectedHost!.mark == host.mark;
+                  selectedHost != null &&
+                  selectedHost!.mark != null &&
+                  selectedHost!.mark == host.mark;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Card(
                   elevation: isSelected ? 4 : 2,
-                  color: isSelected
-                      ? Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withOpacity(0.06)
-                      : null,
+                  // 不使用特殊背景色，只保留边框和文字高亮
+                  color: null,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
+                    side: isSelected
+                        ? BorderSide(color: scheme.primary, width: 1.4)
+                        : BorderSide.none,
                   ),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(10),
-                    onTap: () => onHostTap?.call(host),
+                    onTap: () {
+                      // 已选中的服务再次点击时不处理
+                      if (isSelected) return;
+                      onHostTap?.call(host);
+                      _showCenterHud(context, '切换成功');
+                    },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -69,7 +78,13 @@ class HostsDrawer extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.link, size: 20),
+                          Icon(
+                            Icons.link,
+                            size: 20,
+                            color: isSelected
+                                ? scheme.primary
+                                : theme.iconTheme.color,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Column(
@@ -78,10 +93,15 @@ class HostsDrawer extends StatelessWidget {
                               children: [
                                 Text(
                                   host.title,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w600,
+                                    color: isSelected
+                                        ? scheme.primary
+                                        : theme.textTheme.bodyMedium?.color,
+                                  ).merge(const TextStyle()),
                                   // 支持多行展示标题
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -91,7 +111,9 @@ class HostsDrawer extends StatelessWidget {
                                   url,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey.shade600,
+                                    color: isSelected
+                                        ? scheme.primary.withOpacity(0.8)
+                                        : Colors.grey.shade600,
                                   ),
                                   // 支持多行展示 URL
                                   maxLines: 2,

@@ -44,8 +44,9 @@ class PicNetService {
   }
 
   Future<void> _initSelectedHost() async {
-    final visibleHosts =
-        hosts.where((h) => h.prepared == true).toList(growable: false);
+    final visibleHosts = hosts
+        .where((h) => h.prepared == true)
+        .toList(growable: false);
     if (visibleHosts.isEmpty) {
       _selectedHost = null;
       return;
