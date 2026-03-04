@@ -1,12 +1,33 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 
 /// 简单的网络请求工具类，后续可以统一在这里加超时、通用 Header、重试等逻辑
 class NetClient {
-  NetClient._internal();
+  NetClient._internal() {
+    if (kIsWeb) {
+      // Web 环境不支持 dart:io / HttpClient，这里直接使用默认 http.Client。
+      _client = http.Client();
+    } else {
+      final httpClient = HttpClient();
+      // 在 macOS 上，统一通过本机代理 127.0.0.1:7897 转发请求。
+      // 其他平台暂时直连，后续再按需扩展。
+      httpClient.findProxy = (uri) {
+        if (Platform.isMacOS) {
+          return 'PROXY 127.0.0.1:7897;';
+        }
+        return 'DIRECT';
+      };
+      _client = IOClient(httpClient);
+    }
+  }
 
   static final NetClient instance = NetClient._internal();
+
+  late final http.Client _client;
 
   Future<String> getText(
     String url, {
@@ -21,7 +42,7 @@ class NetClient {
     );
 
     try {
-      final response = await http
+      final response = await _client
           .get(uri, headers: headers)
           .timeout(timeout);
 
