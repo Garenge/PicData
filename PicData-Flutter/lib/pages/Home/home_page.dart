@@ -4,6 +4,7 @@ import 'package:lpinyin/lpinyin.dart';
 import '../../models/pic_net_models.dart';
 import '../../services/pic_net_service.dart';
 import 'hosts_drawer.dart';
+import 'tag_gallery_page.dart';
 
 enum HomeViewType { tags, list }
 
@@ -33,8 +34,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onKeyTap(String key) {
-    // ignore: avoid_print
-    print('Key tapped: $key');
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TagGalleryPage(tag: key),
+      ),
+    );
   }
 
   @override
@@ -126,12 +130,10 @@ class _HomePageState extends State<HomePage> {
           spacing: 8,
           runSpacing: 8,
           children: searchKeys
-              .map(
-                (k) => GestureDetector(
-                  onTap: () => _onKeyTap(k),
-                  child: Chip(label: Text(k)),
-                ),
-              )
+              .map((k) => ActionChip(
+                    label: Text(k),
+                    onPressed: () => _onKeyTap(k),
+                  ))
               .toList(),
         ),
       ),
