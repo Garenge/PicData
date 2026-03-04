@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
 
-/// 某个标签下的图集列表页面（占位实现）
-class TagGalleryPage extends StatelessWidget {
-  const TagGalleryPage({super.key, required this.tag});
+import '../../models/home_entry.dart';
 
-  /// 当前选中的搜索标签
-  final String tag;
+/// 某个标签 / 入口对应的图集列表页面（占位实现）
+class TagGalleryPage extends StatelessWidget {
+  const TagGalleryPage({super.key, required this.entry});
+
+  /// 当前选中的首页入口（包含标题和 URL）
+  final HomeEntry entry;
 
   @override
   Widget build(BuildContext context) {
     // 占位数据：后续可替换为真实抓取结果
     final List<String> albums = List.generate(
       20,
-      (index) => '图集 #${index + 1} - $tag',
+      (index) => '图集 #${index + 1} - ${entry.title}',
     );
 
     return Scaffold(
-      appBar: AppBar(title: Text(tag)),
+      appBar: AppBar(title: Text(entry.title)),
       body: LayoutBuilder(
         builder: (context, constraints) {
           // 整体内容边距

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lpinyin/lpinyin.dart';
 
 import '../../models/pic_net_models.dart';
+import '../../models/home_entry.dart';
 import '../../services/pic_net_service.dart';
 import 'hosts_drawer.dart';
 import 'tag_gallery_page.dart';
@@ -33,12 +34,12 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  void _onKeyTap(String key) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TagGalleryPage(tag: key),
-      ),
-    );
+  void _onEntryTap(HomeEntry entry) {
+    // ignore: avoid_print
+    print('Tap HomeEntry -> title: ${entry.title}, url: ${entry.url}');
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => TagGalleryPage(entry: entry)));
   }
 
   @override
@@ -47,24 +48,68 @@ class _HomePageState extends State<HomePage> {
     final selectedHost = _selectedHost ?? PicNetService.instance.selectedHost;
 
     // 优先使用当前选中服务的 searchKeys，若为空则回退到全局 searchKeys
-    List<String> searchKeys;
+    List<String> baseKeys;
     if (selectedHost != null && selectedHost.searchKeys.isNotEmpty) {
-      searchKeys = [...selectedHost.searchKeys];
+      baseKeys = [...selectedHost.searchKeys];
     } else {
-      searchKeys = [...PicNetService.instance.globalSearchKeys];
+      baseKeys = [...PicNetService.instance.globalSearchKeys];
     }
 
-    // 按拼音排序，保持展示顺序稳定
-    searchKeys.sort((a, b) {
+    // 按拼音排序，保持展示顺序稳定（仅对基础搜索词排序）
+    baseKeys.sort((a, b) {
       final pa = PinyinHelper.getPinyinE(a, separator: '', defPinyin: a);
       final pb = PinyinHelper.getPinyinE(b, separator: '', defPinyin: b);
       return pa.compareTo(pb);
     });
 
+    // 在数据源前面补上当前 Host 的入口标题（PicNetConfig.hosts.urls.title）
+    final List<HomeEntry> entries = <HomeEntry>[];
+    final selectedSearchFormat = selectedHost?.searchFormat ?? '';
+    final bool shouldEncode = selectedHost?.searchEncode == true;
+
+    String buildSearchUrl(String title) {
+      var value = title;
+      if (shouldEncode) {
+        value = Uri.encodeComponent(value);
+      }
+      if (selectedSearchFormat.isEmpty) {
+        return '';
+      }
+      if (selectedSearchFormat.contains('%@')) {
+        return selectedSearchFormat.replaceAll('%@', value);
+      }
+      // 兼容某些使用 %s 的配置
+      if (selectedSearchFormat.contains('%s')) {
+        return selectedSearchFormat.replaceAll('%s', value);
+      }
+      return selectedSearchFormat;
+    }
+
+    // 1. Host.urls -> 前缀入口
+    final Set<String> existedTitles = <String>{};
+    if (selectedHost != null && selectedHost.urls.isNotEmpty) {
+      for (final u in selectedHost.urls) {
+        final title = (u.title).trim();
+        if (title.isEmpty || existedTitles.contains(title)) continue;
+        existedTitles.add(title);
+        entries.add(HomeEntry(title: title, url: u.url));
+      }
+    }
+
+    // 2. searchKeys -> 使用 searchFormat 生成 URL
+    for (final key in baseKeys) {
+      final title = key.trim();
+      if (title.isEmpty || existedTitles.contains(title)) continue;
+      existedTitles.add(title);
+      final url = buildSearchUrl(title);
+      entries.add(HomeEntry(title: title, url: url));
+    }
+
     // 简单输出当前数据源信息，方便调试
     // ignore: avoid_print
     print(
-        'Home searchKeys count: ${searchKeys.length}, from host: ${selectedHost?.mark ?? 'global'}');
+      'Home entries count: ${entries.length}, from host: ${selectedHost?.mark ?? 'global'}',
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -114,13 +159,13 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       body: _viewType == HomeViewType.tags
-          ? _buildTagsView(searchKeys)
-          : _buildListView(searchKeys),
+          ? _buildTagsView(entries)
+          : _buildListView(entries),
     );
   }
 
-  Widget _buildTagsView(List<String> searchKeys) {
-    if (searchKeys.isEmpty) {
+  Widget _buildTagsView(List<HomeEntry> entries) {
+    if (entries.isEmpty) {
       return const Center(child: Text('暂无标签'));
     }
     return Padding(
@@ -129,28 +174,30 @@ class _HomePageState extends State<HomePage> {
         child: Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: searchKeys
-              .map((k) => ActionChip(
-                    label: Text(k),
-                    onPressed: () => _onKeyTap(k),
-                  ))
+          children: entries
+              .map(
+                (e) => ActionChip(
+                  label: Text(e.title),
+                  onPressed: () => _onEntryTap(e),
+                ),
+              )
               .toList(),
         ),
       ),
     );
   }
 
-  Widget _buildListView(List<String> searchKeys) {
-    if (searchKeys.isEmpty) {
+  Widget _buildListView(List<HomeEntry> entries) {
+    if (entries.isEmpty) {
       return const Center(child: Text('暂无数据'));
     }
 
-    // 此处不再二次排序，保持 PicNetService 中按拼音排序后的顺序
-    final sortedKeys = [...searchKeys];
+    // 此处不再二次排序，保持上游按拼音排序后的顺序
+    final sortedEntries = [...entries];
     final Map<String, int> firstIndexByLetter = <String, int>{};
 
-    String indexLetterFor(String key) {
-      final trimmed = key.trim();
+    String indexLetterFor(String title) {
+      final trimmed = title.trim();
       if (trimmed.isEmpty) return '#';
       final pinyin = PinyinHelper.getShortPinyin(trimmed).toUpperCase();
       if (pinyin.isEmpty) return '#';
@@ -159,8 +206,8 @@ class _HomePageState extends State<HomePage> {
       return isLatin ? first : '#';
     }
 
-    for (var i = 0; i < sortedKeys.length; i++) {
-      final letter = indexLetterFor(sortedKeys[i]);
+    for (var i = 0; i < sortedEntries.length; i++) {
+      final letter = indexLetterFor(sortedEntries[i].title);
       firstIndexByLetter.putIfAbsent(letter, () => i);
     }
 
@@ -177,12 +224,12 @@ class _HomePageState extends State<HomePage> {
           child: ListView.builder(
             controller: _listController,
             itemExtent: 48,
-            itemCount: sortedKeys.length,
+            itemCount: sortedEntries.length,
             itemBuilder: (context, index) {
-              final title = sortedKeys[index];
+              final entry = sortedEntries[index];
               return ListTile(
-                title: Text(title),
-                onTap: () => _onKeyTap(title),
+                title: Text(entry.title),
+                onTap: () => _onEntryTap(entry),
               );
             },
           ),
