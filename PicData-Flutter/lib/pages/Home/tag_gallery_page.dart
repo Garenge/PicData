@@ -284,25 +284,13 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (item.thumbnail.isNotEmpty)
-                  Expanded(
-                    child: Image.network(
-                      item.thumbnail,
-                      fit: BoxFit.cover,
-                      headers: headers,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(8),
-                            child: Text(
-                              '缩略图加载失败',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                Expanded(
+                  child: _GalleryThumbnail(
+                    imageUrl: item.thumbnail,
+                    headers: headers,
+                    title: item.title,
                   ),
+                ),
                 Padding(
                   padding: const EdgeInsets.all(8),
                   child: Text(
@@ -318,6 +306,102 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 统一的缩略图展示组件：优先加载网络缩略图，失败或无图时使用系统占位缩略图。
+class _GalleryThumbnail extends StatelessWidget {
+  const _GalleryThumbnail({
+    required this.imageUrl,
+    required this.headers,
+    required this.title,
+  });
+
+  final String imageUrl;
+  final Map<String, String>? headers;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    // 没有远程缩略图时，直接使用占位图。
+    if (imageUrl.isEmpty) {
+      return _buildPlaceholder(theme);
+    }
+
+    // 有远程缩略图时：先显示占位图，等网络图片加载成功后替换显示。
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(
+        top: Radius.circular(12),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _buildPlaceholder(theme),
+          Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            headers: headers,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) {
+                // 加载完成，显示真实图片。
+                return child;
+              }
+              // 加载中仍然只显示占位图（由下层容器提供）。
+              return const SizedBox.shrink();
+            },
+            errorBuilder: (context, error, stackTrace) {
+              // 远程图片加载失败时，保持下层占位图，不额外显示错误样式。
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder(ThemeData theme) {
+    final bgColor = theme.colorScheme.surfaceVariant.withOpacity(0.6);
+    final borderColor = theme.dividerColor.withOpacity(0.3);
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(12),
+        ),
+        color: bgColor,
+        border: Border.all(color: borderColor, width: 0.5),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            bgColor,
+            bgColor.withOpacity(0.4),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.collections_outlined,
+              size: 32,
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '套图',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                letterSpacing: 1.2,
+              ),
+            ),
+          ],
         ),
       ),
     );
