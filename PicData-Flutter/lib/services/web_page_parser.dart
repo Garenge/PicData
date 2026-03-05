@@ -79,15 +79,42 @@ class WebPageParser {
 
     switch (sourceType) {
       case 3:
-        return _parseSourceType3Models(html);
+        return _parseSourceType3Models(html, host);
       case 4:
-        return _parseSourceType4Models(html);
+        return _parseSourceType4Models(html, host);
       case 5:
-        return _parseSourceType5Models(html);
+        return _parseSourceType5Models(html, host);
       case 10:
-        return _parseSourceType10Models(html);
+        return _parseSourceType10Models(html, host);
       default:
         return <PicContent>[];
+    }
+  }
+
+  /// 尝试基于站点配置把相对地址补全为绝对 URL。
+  ///
+  /// - 若 `raw` 为空，则返回空字符串；
+  /// - 若已是绝对地址（`http` / `https`），原样返回；
+  /// - 否则基于 `host.hostUrl` 进行拼接，尽量还原 OC 中 `getThumbnailUrlFromImageElement`
+  ///   对缩略图 / 链接的补全策略。
+  String _resolveUrl(String? raw, PicHost? host) {
+    final value = raw?.trim() ?? '';
+    if (value.isEmpty) return '';
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+
+    final base = host?.hostUrl;
+    if (base == null || base.isEmpty) {
+      return value;
+    }
+
+    try {
+      final baseUri = Uri.parse(base);
+      final resolved = baseUri.resolve(value);
+      return resolved.toString();
+    } catch (_) {
+      return value;
     }
   }
 
@@ -162,7 +189,7 @@ class WebPageParser {
   }
 
   /// `sourceType = 3` 对应的结构化列表解析。
-  List<PicContent> _parseSourceType3Models(String html) {
+  List<PicContent> _parseSourceType3Models(String html, PicHost? host) {
     final document = html_parser.parse(html);
     final container = document.querySelector('div.HCRIN');
     if (container == null) return <PicContent>[];
@@ -170,16 +197,18 @@ class WebPageParser {
     final results = <PicContent>[];
     for (final article in container.querySelectorAll('div.VVAHRQFF')) {
       final link = article.querySelector('a');
-      final href = link?.attributes['href']?.trim() ?? '';
+      final href =
+          _resolveUrl(link?.attributes['href']?.trim(), host);
 
       final titleElement = article.querySelector('div.GZDHFYIQ a');
       final title = titleElement?.text.trim() ?? '';
 
       final img = article.querySelector('img');
-      final thumb =
-          img?.attributes['src']?.trim() ??
-          img?.attributes['data-src']?.trim() ??
-          '';
+      final thumb = _resolveUrl(
+        img?.attributes['src']?.trim() ??
+            img?.attributes['data-src']?.trim(),
+        host,
+      );
 
       if (href.isEmpty && title.isEmpty && thumb.isEmpty) {
         continue;
@@ -265,7 +294,7 @@ class WebPageParser {
   }
 
   /// `sourceType = 4` 对应的结构化列表解析。
-  List<PicContent> _parseSourceType4Models(String html) {
+  List<PicContent> _parseSourceType4Models(String html, PicHost? host) {
     final document = html_parser.parse(html);
     final container = document.querySelector('div.update_area_content');
     if (container == null) return <PicContent>[];
@@ -273,13 +302,15 @@ class WebPageParser {
     final results = <PicContent>[];
     for (final article in container.querySelectorAll('.i_list')) {
       final link = article.querySelector('a');
-      final href = link?.attributes['href']?.trim() ?? '';
+      final href =
+          _resolveUrl(link?.attributes['href']?.trim(), host);
 
       final img = link?.querySelector('img') ?? article.querySelector('img');
-      final thumb =
-          img?.attributes['src']?.trim() ??
-          img?.attributes['data-src']?.trim() ??
-          '';
+      final thumb = _resolveUrl(
+        img?.attributes['src']?.trim() ??
+            img?.attributes['data-src']?.trim(),
+        host,
+      );
 
       final titleElement = article.querySelector('.meta-title');
       final title = titleElement?.text.trim() ?? '';
@@ -385,7 +416,7 @@ class WebPageParser {
   }
 
   /// `sourceType = 5` 对应的结构化列表解析。
-  List<PicContent> _parseSourceType5Models(String html) {
+  List<PicContent> _parseSourceType5Models(String html, PicHost? host) {
     final document = html_parser.parse(html);
     final container = document.querySelector('.content');
     if (container == null) return <PicContent>[];
@@ -393,13 +424,15 @@ class WebPageParser {
     final results = <PicContent>[];
     for (final article in container.querySelectorAll('.clearfix')) {
       final link = article.querySelector('a');
-      final href = link?.attributes['href']?.trim() ?? '';
+      final href =
+          _resolveUrl(link?.attributes['href']?.trim(), host);
 
       final img = article.querySelector('img');
-      final thumb =
-          img?.attributes['src']?.trim() ??
-          img?.attributes['data-src']?.trim() ??
-          '';
+      final thumb = _resolveUrl(
+        img?.attributes['src']?.trim() ??
+            img?.attributes['data-src']?.trim(),
+        host,
+      );
 
       final rawTitle = img?.attributes['title']?.trim() ?? '';
       var title = rawTitle;
@@ -523,7 +556,7 @@ class WebPageParser {
   }
 
   /// `sourceType = 10` 对应的结构化列表解析。
-  List<PicContent> _parseSourceType10Models(String html) {
+  List<PicContent> _parseSourceType10Models(String html, PicHost? host) {
     final document = html_parser.parse(html);
     final blogContainers = document.querySelectorAll('.blog');
     if (blogContainers.isEmpty) return <PicContent>[];
@@ -532,14 +565,16 @@ class WebPageParser {
     for (final blog in blogContainers) {
       for (final row in blog.querySelectorAll('.items-row')) {
         final link = row.querySelector('a');
-        final href = link?.attributes['href']?.trim() ?? '';
+        final href =
+            _resolveUrl(link?.attributes['href']?.trim(), host);
 
         final img = link?.querySelector('img') ?? row.querySelector('img');
         final rawTitle = img?.attributes['alt']?.trim() ?? '';
-        final thumb =
-            img?.attributes['src']?.trim() ??
-            img?.attributes['data-src']?.trim() ??
-            '';
+        final thumb = _resolveUrl(
+          img?.attributes['src']?.trim() ??
+              img?.attributes['data-src']?.trim(),
+          host,
+        );
 
         var title = rawTitle;
         if (title.isNotEmpty) {
