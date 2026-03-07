@@ -216,6 +216,13 @@ class _TagGalleryItem extends StatefulWidget {
 class _TagGalleryItemState extends State<_TagGalleryItem>
     with AutomaticKeepAliveClientMixin<_TagGalleryItem> {
   bool _isHovered = false;
+  bool _isDownloaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isDownloaded = widget.item.isDownloaded ?? false;
+  }
 
   @override
   bool get wantKeepAlive => true;
@@ -293,14 +300,39 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
                 ),
                 Padding(
                   padding: const EdgeInsets.all(8),
-                  child: Text(
-                    item.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  if (!_isDownloaded)
+                        IconButton(
+                          tooltip: '下载',
+                          iconSize: 20,
+                          splashRadius: 18,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: const Icon(Icons.download_outlined),
+                          onPressed: () {
+                        // ignore: avoid_print
+                        print('已将「${item.title}」加入下载列表');
+                        if (!_isDownloaded) {
+                          setState(() {
+                            _isDownloaded = true;
+                          });
+                        }
+                      },
+                        ),
+                    ],
                   ),
                 ),
               ],
@@ -335,9 +367,7 @@ class _GalleryThumbnail extends StatelessWidget {
 
     // 有远程缩略图时：先显示占位图，等网络图片加载成功后替换显示。
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(
-        top: Radius.circular(12),
-      ),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -370,18 +400,13 @@ class _GalleryThumbnail extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(12),
-        ),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
         color: bgColor,
         border: Border.all(color: borderColor, width: 0.5),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            bgColor,
-            bgColor.withOpacity(0.4),
-          ],
+          colors: [bgColor, bgColor.withOpacity(0.4)],
         ),
       ),
       child: Center(
