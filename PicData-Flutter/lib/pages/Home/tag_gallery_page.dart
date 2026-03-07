@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/home_entry.dart';
 import '../../models/pic_net_models.dart';
 import '../../models/pic_content.dart';
 import '../../services/net_client.dart';
 import '../../services/web_page_parser.dart';
+import 'pic_detail_page.dart';
 
 /// 某个标签 / 入口对应的图集列表页面。
 ///
@@ -27,6 +28,10 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
   Future<List<PicContent>> _contentsFuture = Future<List<PicContent>>.value(
     <PicContent>[],
   );
+  final List<PicContent> _extraContents = <PicContent>[];
+  String? _nextPageUrl;
+  bool _isLoadingMore = false;
+  Object? _loadMoreError;
 
   /// 根据当前站点配置构造请求需要的 Header。
   ///
@@ -82,6 +87,20 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
       entryUrl: url,
     );
 
+    // 4. 解析下一页链接
+    final nextPage = parser.parseNextPageUrl(
+      html: html,
+      host: widget.host,
+      entryUrl: url,
+    );
+    if (mounted) {
+      setState(() {
+        _nextPageUrl = (nextPage != null && nextPage.isNotEmpty)
+            ? nextPage
+            : null;
+      });
+    }
+
     if (contents.isEmpty) {
       // 若解析失败，则返回一个占位项提示。
       return <PicContent>[
@@ -134,7 +153,8 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
             );
           }
 
-          final contents = snapshot.data ?? <PicContent>[];
+          final initialContents = snapshot.data ?? <PicContent>[];
+          final contents = <PicContent>[...initialContents, ..._extraContents];
           if (contents.isEmpty) {
             return const Center(child: Text('暂无数据'));
           }
@@ -153,40 +173,74 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
 
               final gridWidth =
                   crossAxisCount * (itemWidth + spacing) - spacing;
+              final double sidePadding =
+                  ((maxWidth - gridWidth) / 2).clamp(0, double.infinity);
 
-              return Align(
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 8,
-                  ),
-                  child: SizedBox(
-                    width: gridWidth,
-                    child: GridView.builder(
-                      itemCount: contents.length,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        mainAxisSpacing: spacing,
-                        crossAxisSpacing: spacing,
-                        // 控制高度（缩略图 + 标题区域），大约 4:5
-                        childAspectRatio: 3 / 4,
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 8,
+                ),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: GridView.builder(
+                        padding: EdgeInsets.symmetric(horizontal: sidePadding),
+                        itemCount: contents.length,
+                        gridDelegate:
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          mainAxisSpacing: spacing,
+                          crossAxisSpacing: spacing,
+                          // 控制高度（缩略图 + 标题区域），大约 4:5
+                          childAspectRatio: 3 / 4,
+                        ),
+                        itemBuilder: (context, index) {
+                          final item = contents[index];
+                          return _TagGalleryItem(
+                            key: ValueKey(
+                              item.href.isNotEmpty
+                                  ? item.href
+                                  : '${item.title}#$index',
+                            ),
+                            item: item,
+                            headers: headers,
+                            host: widget.host,
+                          );
+                        },
                       ),
-                      itemBuilder: (context, index) {
-                        final item = contents[index];
-                        return _TagGalleryItem(
-                          key: ValueKey(
-                            item.href.isNotEmpty
-                                ? item.href
-                                : '${item.title}#$index',
-                          ),
-                          item: item,
-                          headers: headers,
-                          host: widget.host,
-                        );
-                      },
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    if (_isLoadingMore)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    else if (_nextPageUrl != null)
+                      Align(
+                        alignment: Alignment.center,
+                        child: TextButton.icon(
+                          onPressed: _loadNextPage,
+                          icon: const Icon(Icons.expand_more),
+                          label: const Text('加载更多'),
+                        ),
+                      ),
+                    if (_loadMoreError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          '加载更多失败：$_loadMoreError',
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               );
             },
@@ -194,6 +248,62 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
         },
       ),
     );
+  }
+
+  Future<void> _loadNextPage() async {
+    final nextUrl = _nextPageUrl;
+    if (nextUrl == null || nextUrl.isEmpty || _isLoadingMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+      _loadMoreError = null;
+    });
+
+    try {
+      final html = await NetClient.instance.getText(
+        nextUrl,
+        headers: _buildImageHeaders(),
+      );
+
+      // ignore: avoid_print
+      print('Loaded next page html from $nextUrl, length=${html.length}');
+
+      final parser = const WebPageParser();
+      final newContents = parser.parseContentList(
+        html: html,
+        host: widget.host,
+        entryUrl: nextUrl,
+      );
+      final nextPage = parser.parseNextPageUrl(
+        html: html,
+        host: widget.host,
+        entryUrl: nextUrl,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _extraContents.addAll(newContents);
+        _nextPageUrl = (nextPage != null && nextPage.isNotEmpty)
+            ? nextPage
+            : null;
+        _isLoadingMore = false;
+      });
+    } catch (e, stack) {
+      // ignore: avoid_print
+      print('TagGalleryPage _loadNextPage ERROR for url=$nextUrl');
+      // ignore: avoid_print
+      print('  errorType=${e.runtimeType}');
+      // ignore: avoid_print
+      print('  error=$e');
+      // ignore: avoid_print
+      print('  stackTrace=$stack');
+
+      if (!mounted) return;
+      setState(() {
+        _isLoadingMore = false;
+        _loadMoreError = e;
+      });
+    }
   }
 }
 
@@ -252,7 +362,7 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
           boxShadow: _isHovered
               ? [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.16),
+                    color: Colors.black.withValues(alpha: 0.16),
                     blurRadius: 18,
                     spreadRadius: 1,
                     offset: const Offset(0, 10),
@@ -260,7 +370,7 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 10,
                     spreadRadius: 0,
                     offset: const Offset(0, 4),
@@ -278,14 +388,25 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
               final host = widget.host;
               // ignore: avoid_print
               print(
-                'Tap PicContent -> service="${host?.title}", mark="${host?.mark}", sourceType=${host?.sourceType}',
+                'Tap PicContent -> service="${host?.title}", '
+                'mark="${host?.mark}", sourceType=${host?.sourceType}',
               );
               // ignore: avoid_print
-              print('  thumbnail="${item.thumbnail}"');
+              print('  PicContent.title   = "${item.title}"');
+              // ignore: avoid_print
+              print('  PicContent.href    = "${item.href}"');
+              // ignore: avoid_print
+              print('  PicContent.thumbnail = "${item.thumbnail}"');
               // ignore: avoid_print
               print('  image headers=$headers');
+
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => PicDetailPage(content: item, host: host),
+                ),
+              );
             },
-            hoverColor: Colors.black.withOpacity(0.02),
+            hoverColor: Colors.black.withValues(alpha: 0.02),
             highlightColor: Colors.transparent,
             splashColor: Colors.transparent,
             child: Column(
@@ -314,7 +435,7 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
                           ),
                         ),
                       ),
-                  if (!_isDownloaded)
+                      if (!_isDownloaded)
                         IconButton(
                           tooltip: '下载',
                           iconSize: 20,
@@ -323,14 +444,14 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
                           constraints: const BoxConstraints(),
                           icon: const Icon(Icons.download_outlined),
                           onPressed: () {
-                        // ignore: avoid_print
-                        print('已将「${item.title}」加入下载列表');
-                        if (!_isDownloaded) {
-                          setState(() {
-                            _isDownloaded = true;
-                          });
-                        }
-                      },
+                            // ignore: avoid_print
+                            print('已将「${item.title}」加入下载列表');
+                            if (!_isDownloaded) {
+                              setState(() {
+                                _isDownloaded = true;
+                              });
+                            }
+                          },
                         ),
                     ],
                   ),
@@ -372,22 +493,12 @@ class _GalleryThumbnail extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           _buildPlaceholder(theme),
-          Image.network(
-            imageUrl,
+          CachedNetworkImage(
+            imageUrl: imageUrl,
+            httpHeaders: headers,
             fit: BoxFit.cover,
-            headers: headers,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) {
-                // 加载完成，显示真实图片。
-                return child;
-              }
-              // 加载中仍然只显示占位图（由下层容器提供）。
-              return const SizedBox.shrink();
-            },
-            errorBuilder: (context, error, stackTrace) {
-              // 远程图片加载失败时，保持下层占位图，不额外显示错误样式。
-              return const SizedBox.shrink();
-            },
+            placeholder: (context, _) => const SizedBox.shrink(),
+            errorWidget: (context, _, __) => const SizedBox.shrink(),
           ),
         ],
       ),
@@ -395,8 +506,8 @@ class _GalleryThumbnail extends StatelessWidget {
   }
 
   Widget _buildPlaceholder(ThemeData theme) {
-    final bgColor = theme.colorScheme.surfaceVariant.withOpacity(0.6);
-    final borderColor = theme.dividerColor.withOpacity(0.3);
+    final bgColor = theme.colorScheme.surfaceVariant.withValues(alpha: 0.6);
+    final borderColor = theme.dividerColor.withValues(alpha: 0.3);
 
     return Container(
       decoration: BoxDecoration(
@@ -406,7 +517,7 @@ class _GalleryThumbnail extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [bgColor, bgColor.withOpacity(0.4)],
+          colors: [bgColor, bgColor.withValues(alpha: 0.4)],
         ),
       ),
       child: Center(
@@ -416,13 +527,13 @@ class _GalleryThumbnail extends StatelessWidget {
             Icon(
               Icons.collections_outlined,
               size: 32,
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
             const SizedBox(height: 6),
             Text(
               '套图',
               style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 letterSpacing: 1.2,
               ),
             ),

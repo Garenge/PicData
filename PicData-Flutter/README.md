@@ -23,6 +23,15 @@
 - 点击套图，查看套图详情。
 - 套图缩略图占位图与加载策略（参考 OC 端的缩略图策略，在 Flutter 端已实现统一占位图 + 图片加载完成后替换展示）。
 
+### 3. 套图详情页（解析与展示）
+
+- 从 tag 列表点击套图 cell，跳转到详情页（当前已有占位页面 `PicDetailPage`，仅展示 `PicContent` 与 `PicHost` 的基本信息）。
+- 根据列表传入的 `PicContent.href`，获取详情页的网页内容（HTML）。
+- 参考 `Flutter-Spider-Notes.md` 中第 6 节关于 OC 端详情解析的记录，实现 Dart 版详情页解析逻辑：
+  - 解析当前详情页的图片列表；
+  - 解析“下一页”链接并循环抓取，直到 OC 逻辑中的最终页；
+  - 将所有页的图片合并为一套完整图集，在详情页中以列表或瀑布流的方式展示。
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

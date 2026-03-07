@@ -112,7 +112,7 @@ class HostsDrawer extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: isSelected
-                                        ? scheme.primary.withOpacity(0.8)
+                                        ? scheme.primary.withValues(alpha: 0.8)
                                         : Colors.grey.shade600,
                                   ),
                                   // 支持多行展示 URL
@@ -171,7 +171,7 @@ class HostsDrawer extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.75),
+              color: Colors.black.withValues(alpha: 0.75),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(

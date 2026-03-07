@@ -91,6 +91,89 @@ class WebPageParser {
     }
   }
 
+  /// 解析当前列表页的“下一页”链接。
+  ///
+  /// 返回补全为绝对地址后的 URL；若未找到则返回 null。
+  String? parseNextPageUrl({
+    required String html,
+    required PicHost? host,
+    String? entryUrl,
+  }) {
+    if (html.isEmpty) return null;
+
+    final sourceType = host?.sourceType;
+    if (sourceType == null) return null;
+
+    switch (sourceType) {
+      case 3:
+        return _parseSourceType3NextPage(html, host);
+      case 4:
+        return _parseSourceType4NextPage(html, host);
+      case 5:
+        return _parseSourceType5NextPage(html, host);
+      case 10:
+        return _parseSourceType10NextPage(html, host);
+      default:
+        return null;
+    }
+  }
+
+  /// 解析详情页当前页的所有图片 URL。
+  ///
+  /// 返回补全为绝对地址后的图片链接数组。
+  List<String> parseDetailImages({
+    required String html,
+    required PicHost? host,
+    String? detailUrl,
+  }) {
+    if (html.isEmpty) return <String>[];
+
+    final sourceType = host?.sourceType;
+    if (sourceType == null) return <String>[];
+
+    switch (sourceType) {
+      case 3:
+        return _parseSourceType3DetailImages(html, host);
+      case 4:
+        return _parseSourceType4DetailImages(html, host);
+      case 5:
+        return _parseSourceType5DetailImages(html, host);
+      case 10:
+        return _parseSourceType10DetailImages(html, host);
+      default:
+        return <String>[];
+    }
+  }
+
+  /// 解析详情页当前页的推荐套图列表。
+  ///
+  /// 返回结构化的 `PicContent` 数组；若站点暂不支持推荐，则返回空数组。
+  List<PicContent> parseDetailSuggestions({
+    required String html,
+    required PicHost? host,
+    String? detailUrl,
+  }) {
+    if (html.isEmpty) return <PicContent>[];
+
+    final sourceType = host?.sourceType;
+    if (sourceType == null) return <PicContent>[];
+
+    switch (sourceType) {
+      case 3:
+        // 与 OC 端同步：同步解析阶段不返回推荐，后续可按需实现异步推荐逻辑。
+        return <PicContent>[];
+      case 4:
+        return _parseSourceType4SuggestionModels(html, host);
+      case 5:
+        return _parseSourceType5SuggestionModels(html, host);
+      case 10:
+        // SourceType10 详情页推荐与列表布局相同，可复用列表解析逻辑。
+        return _parseSourceType10Models(html, host);
+      default:
+        return <PicContent>[];
+    }
+  }
+
   /// 尝试基于站点配置把相对地址补全为绝对 URL。
   ///
   /// - 若 `raw` 为空，则返回空字符串；
@@ -116,6 +199,82 @@ class WebPageParser {
     } catch (_) {
       return value;
     }
+  }
+
+  /// `sourceType = 3` 详情页图片解析。
+  ///
+  /// - 图片容器：`.VKSUBTSWA`
+  /// - 其中所有 `img` 的 `src` 作为图片地址。
+  List<String> _parseSourceType3DetailImages(String html, PicHost? host) {
+    final document = html_parser.parse(html);
+    final container = document.querySelector('.VKSUBTSWA');
+    if (container == null) return <String>[];
+
+    final results = <String>[];
+    for (final img in container.querySelectorAll('img')) {
+      final url = _resolveUrl(img.attributes['src']?.trim(), host);
+      if (url.isNotEmpty) {
+        results.add(url);
+      }
+    }
+    return results;
+  }
+
+  /// `sourceType = 4` 详情页图片解析。
+  ///
+  /// - 图片容器：`.content`
+  /// - 其中所有 `img` 的 `src` 作为图片地址。
+  List<String> _parseSourceType4DetailImages(String html, PicHost? host) {
+    final document = html_parser.parse(html);
+    final container = document.querySelector('.content');
+    if (container == null) return <String>[];
+
+    final results = <String>[];
+    for (final img in container.querySelectorAll('img')) {
+      final url = _resolveUrl(img.attributes['src']?.trim(), host);
+      if (url.isNotEmpty) {
+        results.add(url);
+      }
+    }
+    return results;
+  }
+
+  /// `sourceType = 5` 详情页图片解析。
+  ///
+  /// - 图片容器：`.file-detail`
+  /// - 其中所有 `img` 的 `src` 作为图片地址。
+  List<String> _parseSourceType5DetailImages(String html, PicHost? host) {
+    final document = html_parser.parse(html);
+    final container = document.querySelector('.file-detail');
+    if (container == null) return <String>[];
+
+    final results = <String>[];
+    for (final img in container.querySelectorAll('img')) {
+      final url = _resolveUrl(img.attributes['src']?.trim(), host);
+      if (url.isNotEmpty) {
+        results.add(url);
+      }
+    }
+    return results;
+  }
+
+  /// `sourceType = 10` 详情页图片解析。
+  ///
+  /// - 图片容器：`.article-fulltext`
+  /// - 其中所有 `img` 的 `src` 作为图片地址。
+  List<String> _parseSourceType10DetailImages(String html, PicHost? host) {
+    final document = html_parser.parse(html);
+    final container = document.querySelector('.article-fulltext');
+    if (container == null) return <String>[];
+
+    final results = <String>[];
+    for (final img in container.querySelectorAll('img')) {
+      final url = _resolveUrl(img.attributes['src']?.trim(), host);
+      if (url.isNotEmpty) {
+        results.add(url);
+      }
+    }
+    return results;
   }
 
   /// `sourceType = 3`（hitxhot）列表页解析。
@@ -197,16 +356,14 @@ class WebPageParser {
     final results = <PicContent>[];
     for (final article in container.querySelectorAll('div.VVAHRQFF')) {
       final link = article.querySelector('a');
-      final href =
-          _resolveUrl(link?.attributes['href']?.trim(), host);
+      final href = _resolveUrl(link?.attributes['href']?.trim(), host);
 
       final titleElement = article.querySelector('div.GZDHFYIQ a');
       final title = titleElement?.text.trim() ?? '';
 
       final img = article.querySelector('img');
       final thumb = _resolveUrl(
-        img?.attributes['src']?.trim() ??
-            img?.attributes['data-src']?.trim(),
+        img?.attributes['src']?.trim() ?? img?.attributes['data-src']?.trim(),
         host,
       );
 
@@ -302,13 +459,52 @@ class WebPageParser {
     final results = <PicContent>[];
     for (final article in container.querySelectorAll('.i_list')) {
       final link = article.querySelector('a');
-      final href =
-          _resolveUrl(link?.attributes['href']?.trim(), host);
+      final href = _resolveUrl(link?.attributes['href']?.trim(), host);
 
       final img = link?.querySelector('img') ?? article.querySelector('img');
       final thumb = _resolveUrl(
-        img?.attributes['src']?.trim() ??
-            img?.attributes['data-src']?.trim(),
+        img?.attributes['src']?.trim() ?? img?.attributes['data-src']?.trim(),
+        host,
+      );
+
+      final titleElement = article.querySelector('.meta-title');
+      final title = titleElement?.text.trim() ?? '';
+
+      if (href.isEmpty && title.isEmpty && thumb.isEmpty) {
+        continue;
+      }
+
+      results.add(
+        PicContent(
+          title: title.isEmpty ? '(无标题)' : title,
+          href: href,
+          thumbnail: thumb,
+        ),
+      );
+    }
+    return results;
+  }
+
+  /// `sourceType = 4` 详情页推荐套图解析。
+  ///
+  /// - 推荐容器：`div.update_area_lists`
+  /// - 套图项：`.i_list`，结构与列表页相同。
+  List<PicContent> _parseSourceType4SuggestionModels(
+    String html,
+    PicHost? host,
+  ) {
+    final document = html_parser.parse(html);
+    final container = document.querySelector('div.update_area_lists');
+    if (container == null) return <PicContent>[];
+
+    final results = <PicContent>[];
+    for (final article in container.querySelectorAll('.i_list')) {
+      final link = article.querySelector('a');
+      final href = _resolveUrl(link?.attributes['href']?.trim(), host);
+
+      final img = link?.querySelector('img') ?? article.querySelector('img');
+      final thumb = _resolveUrl(
+        img?.attributes['src']?.trim() ?? img?.attributes['data-src']?.trim(),
         host,
       );
 
@@ -424,13 +620,67 @@ class WebPageParser {
     final results = <PicContent>[];
     for (final article in container.querySelectorAll('.clearfix')) {
       final link = article.querySelector('a');
-      final href =
-          _resolveUrl(link?.attributes['href']?.trim(), host);
+      final href = _resolveUrl(link?.attributes['href']?.trim(), host);
 
       final img = article.querySelector('img');
       final thumb = _resolveUrl(
-        img?.attributes['src']?.trim() ??
-            img?.attributes['data-src']?.trim(),
+        img?.attributes['src']?.trim() ?? img?.attributes['data-src']?.trim(),
+        host,
+      );
+
+      final rawTitle = img?.attributes['title']?.trim() ?? '';
+      var title = rawTitle;
+
+      if (title.isNotEmpty && href.isNotEmpty) {
+        final uri = Uri.tryParse(href);
+        final lastSegment = uri?.pathSegments.isNotEmpty == true
+            ? uri!.pathSegments.last
+            : '';
+        var id = lastSegment;
+        final dotIndex = id.lastIndexOf('.');
+        if (dotIndex > 0) {
+          id = id.substring(0, dotIndex);
+        }
+        if (id.isNotEmpty) {
+          title = '$title $id';
+        }
+      }
+
+      if (href.isEmpty && title.isEmpty && thumb.isEmpty) {
+        continue;
+      }
+
+      results.add(
+        PicContent(
+          title: title.isEmpty ? '(无标题)' : title,
+          href: href,
+          thumbnail: thumb,
+        ),
+      );
+    }
+    return results;
+  }
+
+  /// `sourceType = 5` 详情页推荐套图解析。
+  ///
+  /// - 推荐容器：`.related-files`
+  /// - 套图项：`.clearfix`，结构与列表页相同。
+  List<PicContent> _parseSourceType5SuggestionModels(
+    String html,
+    PicHost? host,
+  ) {
+    final document = html_parser.parse(html);
+    final container = document.querySelector('.related-files');
+    if (container == null) return <PicContent>[];
+
+    final results = <PicContent>[];
+    for (final article in container.querySelectorAll('.clearfix')) {
+      final link = article.querySelector('a');
+      final href = _resolveUrl(link?.attributes['href']?.trim(), host);
+
+      final img = article.querySelector('img');
+      final thumb = _resolveUrl(
+        img?.attributes['src']?.trim() ?? img?.attributes['data-src']?.trim(),
         host,
       );
 
@@ -565,14 +815,12 @@ class WebPageParser {
     for (final blog in blogContainers) {
       for (final row in blog.querySelectorAll('.items-row')) {
         final link = row.querySelector('a');
-        final href =
-            _resolveUrl(link?.attributes['href']?.trim(), host);
+        final href = _resolveUrl(link?.attributes['href']?.trim(), host);
 
         final img = link?.querySelector('img') ?? row.querySelector('img');
         final rawTitle = img?.attributes['alt']?.trim() ?? '';
         final thumb = _resolveUrl(
-          img?.attributes['src']?.trim() ??
-              img?.attributes['data-src']?.trim(),
+          img?.attributes['src']?.trim() ?? img?.attributes['data-src']?.trim(),
           host,
         );
 
@@ -606,5 +854,84 @@ class WebPageParser {
       }
     }
     return results;
+  }
+
+  String? _parseSourceType3NextPage(String html, PicHost? host) {
+    final document = html_parser.parse(html);
+    final nextContainer = document.querySelector('.nav-next');
+    if (nextContainer == null) return null;
+
+    for (final link in nextContainer.querySelectorAll('a')) {
+      final text = link.text.trim();
+      if (text == '→' || text.contains('→')) {
+        final href = link.attributes['href']?.trim();
+        final resolved = _resolveUrl(href, host);
+        if (resolved.isNotEmpty) return resolved;
+        break;
+      }
+    }
+    return null;
+  }
+
+  String? _parseSourceType4NextPage(String html, PicHost? host) {
+    final document = html_parser.parse(html);
+    final nextContainer = document.querySelector('.page');
+    if (nextContainer == null) return null;
+
+    for (final link in nextContainer.querySelectorAll('a')) {
+      final text = link.text.trim();
+      if (text == '下页') {
+        final href = link.attributes['href']?.trim();
+        final resolved = _resolveUrl(href, host);
+        if (resolved.isNotEmpty) return resolved;
+        break;
+      }
+    }
+    return null;
+  }
+
+  String? _parseSourceType5NextPage(String html, PicHost? host) {
+    final document = html_parser.parse(html);
+    final nextContainer = document.querySelector('#pager');
+    if (nextContainer == null) return null;
+
+    for (final link in nextContainer.querySelectorAll('a')) {
+      final text = link.text.trim();
+      const nextPageTitle = '下一页 ›';
+      if (text == nextPageTitle || text.contains(nextPageTitle)) {
+        final href = link.attributes['href']?.trim();
+        final resolved = _resolveUrl(href, host);
+        if (resolved.isNotEmpty) return resolved;
+        break;
+      }
+    }
+    return null;
+  }
+
+  String? _parseSourceType10NextPage(String html, PicHost? host) {
+    final document = html_parser.parse(html);
+    final nextContainer = document.querySelector('.pagination-list');
+    if (nextContainer == null) return null;
+
+    final links = nextContainer.querySelectorAll('a');
+    if (links.isEmpty) return null;
+
+    var currentIndex = -1;
+    for (var i = 0; i < links.length; i++) {
+      final classes = links[i].attributes['class'] ?? '';
+      if (classes.contains('is-current')) {
+        currentIndex = i;
+        break;
+      }
+    }
+
+    if (currentIndex >= 0 && currentIndex < links.length - 1) {
+      final nextLink = links[currentIndex + 1];
+      final href = nextLink.attributes['href']?.trim();
+      final resolved = _resolveUrl(href, host);
+      if (resolved.isNotEmpty) return resolved;
+    }
+
+    return null;
   }
 }
