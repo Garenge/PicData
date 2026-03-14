@@ -5,17 +5,14 @@ import '../../models/pic_content.dart';
 import '../../models/pic_net_models.dart';
 import '../../services/net_client.dart';
 import '../../services/web_page_parser.dart';
+import 'pic_content_grid.dart';
 
 /// 套图详情页。
 ///
 /// 当前版本会根据 `PicContent.href` 请求详情页 HTML，
 /// 并解析出当前页的图片列表和推荐套图列表，然后在控制台打印出来。
 class PicDetailPage extends StatefulWidget {
-  const PicDetailPage({
-    super.key,
-    required this.content,
-    this.host,
-  });
+  const PicDetailPage({super.key, required this.content, this.host});
 
   final PicContent content;
   final PicHost? host;
@@ -66,9 +63,7 @@ class _PicDetailPageState extends State<PicDetailPage> {
     final href = widget.content.href;
     if (href.isEmpty) {
       // ignore: avoid_print
-      print(
-        'PicDetailPage: empty href for content="${widget.content.title}"',
-      );
+      print('PicDetailPage: empty href for content="${widget.content.title}"');
       return;
     }
 
@@ -220,99 +215,17 @@ class _PicDetailPageState extends State<PicDetailPage> {
                         vertical: 8,
                       ),
                       children: [
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            const double itemWidth = 180;
-                            const double spacing = 12;
-                            final maxWidth = constraints.maxWidth;
-                            final int crossAxisCount =
-                                (maxWidth / (itemWidth + spacing))
-                                    .floor()
-                                    .clamp(1, 6);
-                            return GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: _suggestions.length,
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: crossAxisCount,
-                                mainAxisSpacing: spacing,
-                                crossAxisSpacing: spacing,
-                                childAspectRatio: 3 / 4,
-                              ),
-                              itemBuilder: (context, index) {
-                                final item = _suggestions[index];
-                                return Card(
-                                  key: ValueKey<String>(
-                                    item.href.isNotEmpty
-                                        ? item.href
-                                        : 'suggestion#$index',
-                                  ),
-                                  elevation: 3,
-                                  clipBehavior: Clip.antiAlias,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: InkWell(
-                                    onTap: () {
-                                      // ignore: avoid_print
-                                      print(
-                                        'Tap suggestion -> title="${item.title}", href="${item.href}"',
-                                      );
-                                    },
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        Expanded(
-                                          child: Container(
-                                            color: theme
-                                                .colorScheme.surfaceVariant
-                                                .withValues(alpha: 0.6),
-                                            child: item.thumbnail.isEmpty
-                                                ? const Icon(
-                                                    Icons
-                                                        .collections_outlined,
-                                                    size: 32,
-                                                  )
-                                                : CachedNetworkImage(
-                                                    imageUrl: item.thumbnail,
-                                                    httpHeaders: _imageHeaders,
-                                                    fit: BoxFit.cover,
-                                                    placeholder:
-                                                        (context, _) =>
-                                                            const Center(
-                                                      child:
-                                                          CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                      ),
-                                                    ),
-                                                    errorWidget:
-                                                        (context, _, __) =>
-                                                            const Icon(
-                                                      Icons
-                                                          .collections_outlined,
-                                                    ),
-                                                  ),
-                                          ),
-                                        ),
-                                        Padding(
-                                          padding: const EdgeInsets.all(8),
-                                          child: Text(
-                                            item.title,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
+                        PicContentGrid(
+                          contents: _suggestions,
+                          headers: _imageHeaders,
+                          itemWidth: 140,
+                          padding: EdgeInsets.zero,
+                          enableHover: false,
+                          showDownloadButton: false,
+                          onItemTap: (item) {
+                            // ignore: avoid_print
+                            print(
+                              'Tap suggestion -> title="${item.title}", href="${item.href}"',
                             );
                           },
                         ),
@@ -345,72 +258,69 @@ class _PicDetailPageState extends State<PicDetailPage> {
                     child: Center(child: Text('当前页暂无图片')),
                   )
                 : SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final url = _imageUrls[index];
-                        final total = _imageUrls.length;
-                        return Padding(
-                          key: ValueKey<String>(url),
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Stack(
-                              alignment: Alignment.topCenter,
-                              children: [
-                                CachedNetworkImage(
-                                  imageUrl: url,
-                                  httpHeaders: _imageHeaders,
-                                  alignment: Alignment.topCenter,
-                                  fit: BoxFit.contain,
-                                  placeholder: (context, _) => Container(
-                                    color: theme.colorScheme.surfaceVariant
-                                        .withValues(alpha: 0.5),
-                                    height: 160,
-                                    alignment: Alignment.center,
-                                    child: const CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final url = _imageUrls[index];
+                      final total = _imageUrls.length;
+                      return Padding(
+                        key: ValueKey<String>(url),
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Stack(
+                            alignment: Alignment.topCenter,
+                            children: [
+                              CachedNetworkImage(
+                                imageUrl: url,
+                                httpHeaders: _imageHeaders,
+                                alignment: Alignment.topCenter,
+                                fit: BoxFit.contain,
+                                placeholder: (context, _) => Container(
+                                  color: theme.colorScheme.surfaceVariant
+                                      .withValues(alpha: 0.5),
+                                  height: 160,
+                                  alignment: Alignment.center,
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
                                   ),
-                                  errorWidget: (context, _, __) => Container(
-                                    color: theme.colorScheme.surfaceVariant
-                                        .withValues(alpha: 0.5),
-                                    height: 160,
-                                    alignment: Alignment.center,
-                                    child: const Icon(
-                                      Icons.broken_image_outlined,
-                                      size: 32,
+                                ),
+                                errorWidget: (context, _, __) => Container(
+                                  color: theme.colorScheme.surfaceVariant
+                                      .withValues(alpha: 0.5),
+                                  height: 160,
+                                  alignment: Alignment.center,
+                                  child: const Icon(
+                                    Icons.broken_image_outlined,
+                                    size: 32,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                left: 8,
+                                top: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.55),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '${index + 1}/$total',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white,
                                     ),
                                   ),
                                 ),
-                                Positioned(
-                                  left: 8,
-                                  top: 8,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.55),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      '${index + 1}/$total',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        );
-                      },
-                      childCount: _imageUrls.length,
-                    ),
+                        ),
+                      );
+                    }, childCount: _imageUrls.length),
                   ),
           ),
         ],
@@ -418,4 +328,3 @@ class _PicDetailPageState extends State<PicDetailPage> {
     );
   }
 }
-

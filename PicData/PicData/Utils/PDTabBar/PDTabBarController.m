@@ -103,7 +103,7 @@ static const CGFloat kPDTabBarTitleFontSize = 11.0;
     [super viewDidLoad];
 
     self.view.backgroundColor = [UIColor systemBackgroundColor];
-    self.selectedIndex = NSNotFound;
+    _selectedIndex = NSNotFound;
 
     [self setupLayout];
     [self configureTabBarContent];
