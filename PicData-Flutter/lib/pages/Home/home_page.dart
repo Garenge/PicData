@@ -4,11 +4,18 @@ import 'package:lpinyin/lpinyin.dart';
 import '../../models/pic_net_models.dart';
 import '../../models/home_entry.dart';
 import '../../services/pic_net_service.dart';
-import 'hosts_drawer.dart';
-import 'tag_gallery_page.dart';
+import 'hosts/hosts_drawer.dart';
+import 'gallery/tag_gallery_page.dart';
 
+/// 首页展示的两种视图模式：
+/// - [HomeViewType.tags]：用标签云（`ActionChip`）展示入口；
+/// - [HomeViewType.list]：用可按字母索引跳转的列表展示入口。
 enum HomeViewType { tags, list }
 
+/// 应用的导航首页。
+///
+/// 左侧可以选择数据源（`PicHost`），右侧根据当前 Host 的入口配置和搜索关键词，
+/// 组合出用于浏览的入口列表，并支持在「标签视图」和「列表视图」之间切换。
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -16,9 +23,15 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
+/// `HomePage` 对应的可变状态。
 class _HomePageState extends State<HomePage> {
+  /// 当前选中的首页展示模式（标签 / 列表）。
   HomeViewType _viewType = HomeViewType.tags;
+
+  /// 列表模式下用于控制滚动和字母索引快速跳转的控制器。
   final ScrollController _listController = ScrollController();
+
+  /// 当前选中的图站配置（如果为空则回退到 `PicNetService.instance.selectedHost`）。
   PicHost? _selectedHost;
 
   @override
@@ -34,6 +47,7 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  /// 处理入口点击：打印日志，并根据当前 Host 跳转到对应的图集列表页。
   void _onEntryTap(HomeEntry entry) {
     // ignore: avoid_print
     print('Tap HomeEntry -> title: ${entry.title}, url: ${entry.url}');
@@ -173,6 +187,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// 构建「标签云」形式的入口视图：使用 `Wrap + ActionChip` 展示所有入口。
   Widget _buildTagsView(List<HomeEntry> entries) {
     if (entries.isEmpty) {
       return const Center(child: Text('暂无标签'));
@@ -196,6 +211,10 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// 构建「列表 + 右侧字母索引栏」形式的入口视图。
+  ///
+  /// 左侧是可滚动列表，右侧是字母索引栏，点击索引会通过 [_listController]
+  /// 平滑滚动到对应首条记录的位置。
   Widget _buildListView(List<HomeEntry> entries) {
     if (entries.isEmpty) {
       return const Center(child: Text('暂无数据'));
