@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'pages/main_tab/main_tab_page.dart';
+import 'services/download_file_service.dart';
 import 'services/pic_net_service.dart';
 
 void main() {
@@ -25,6 +26,7 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _init() async {
     await PicNetService.instance.load();
+    await DownloadFileService.instance.init();
     setState(() {
       _initialized = true;
     });
