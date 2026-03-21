@@ -28,6 +28,7 @@ class _PicDetailPageState extends State<PicDetailPage> {
   late List<String> _hrefHistory;
 
   bool _isLoading = false;
+  bool _hasLoadedOnce = false;
   Object? _error;
   List<String> _imageUrls = <String>[];
   List<PicContent> _suggestions = <PicContent>[];
@@ -95,18 +96,17 @@ class _PicDetailPageState extends State<PicDetailPage> {
 
   Future<bool> _loadDetailForHref(String href) async {
     if (href.isEmpty) return false;
+    final requestHeaders = _buildImageHeaders(href);
 
     setState(() {
       _isLoading = true;
       _error = null;
-      _nextHref = null; // 避免上一页的 nextHref 误显示
-      _imageHeaders = _buildImageHeaders(href);
     });
 
     try {
       final html = await NetClient.instance.getText(
         href,
-        headers: _imageHeaders,
+        headers: requestHeaders,
       );
 
       print(
@@ -158,7 +158,9 @@ class _PicDetailPageState extends State<PicDetailPage> {
         _currentHref = href;
         _imageUrls = images;
         _suggestions = suggestions;
+        _imageHeaders = requestHeaders;
         _nextHref = (nextHref != null && nextHref.isNotEmpty) ? nextHref : null;
+        _hasLoadedOnce = true;
         print(
           'PicDetailPage._loadDetailForHref.setState: '
           'committed nextHref="${_nextHref ?? ''}" '
@@ -298,7 +300,10 @@ class _PicDetailPageState extends State<PicDetailPage> {
       'images=${_imageUrls.length} suggestions=${_suggestions.length}',
     );
 
-    if (_isLoading) {
+    final shouldShowFullLoading = _isLoading && !_hasLoadedOnce;
+    final shouldShowFullError = _error != null && !_hasLoadedOnce;
+
+    if (shouldShowFullLoading) {
       return Scaffold(
         appBar: _buildAppBar(titleText),
         floatingActionButton: _buildFloatingActions(),
@@ -312,7 +317,7 @@ class _PicDetailPageState extends State<PicDetailPage> {
       );
     }
 
-    if (_error != null) {
+    if (shouldShowFullError) {
       return Scaffold(
         appBar: _buildAppBar(titleText),
         floatingActionButton: _buildFloatingActions(),
@@ -326,151 +331,199 @@ class _PicDetailPageState extends State<PicDetailPage> {
       );
     }
 
-    return Scaffold(
-      appBar: _buildAppBar(titleText),
-      floatingActionButton: _buildFloatingActions(),
-      body: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '当前站点：$hostTitle (sourceType=$sourceType)',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  SelectableText(
-                    '详情地址（href）：\n$_currentHref',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '推荐套图：${_suggestions.length} 个',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 4),
-                  if (_suggestions.isNotEmpty)
-                    ExpansionTile(
-                      title: Text('推荐套图（${_suggestions.length}）'),
-                      childrenPadding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 8,
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: _buildAppBar(titleText),
+          floatingActionButton: _buildFloatingActions(),
+          body: Stack(
+            children: [
+              CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '当前站点：$hostTitle (sourceType=$sourceType)',
+                        style: theme.textTheme.bodyMedium,
                       ),
-                      children: [
-                        PicContentGrid(
-                          contents: _suggestions,
-                          headers: _imageHeaders,
-                          itemWidth: 140,
-                          padding: EdgeInsets.zero,
-                          enableHover: false,
-                          showDownloadButton: false,
-                          onItemTap: (item) {
-                            // ignore: avoid_print
-                            print(
-                              'Tap suggestion -> title="${item.title}", href="${item.href}"',
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 4),
-                  Text(
-                    '当前页图片：${_imageUrls.length} 张',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 8),
-            sliver: _imageUrls.isEmpty
-                ? const SliverToBoxAdapter(
-                    child: Center(child: Text('当前页暂无图片')),
-                  )
-                : SliverList(
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final url = _imageUrls[index];
-                      final total = _imageUrls.length;
-                      return Padding(
-                        key: ValueKey<String>(url),
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Stack(
-                            alignment: Alignment.topCenter,
-                            children: [
-                              CachedNetworkImage(
-                                imageUrl: url,
-                                httpHeaders: _imageHeaders,
-                                alignment: Alignment.topCenter,
-                                fit: BoxFit.contain,
-                                placeholder: (context, _) => Container(
-                                  color: theme.colorScheme.surfaceVariant
-                                      .withValues(alpha: 0.5),
-                                  height: 160,
-                                  alignment: Alignment.center,
-                                  child: const CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                                errorWidget: (context, _, __) => Container(
-                                  color: theme.colorScheme.surfaceVariant
-                                      .withValues(alpha: 0.5),
-                                  height: 160,
-                                  alignment: Alignment.center,
-                                  child: const Icon(
-                                    Icons.broken_image_outlined,
-                                    size: 32,
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                left: 8,
-                                top: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.55),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    '${index + 1}/$total',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                      const SizedBox(height: 8),
+                      SelectableText(
+                        '详情地址（href）：\n$_currentHref',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      if (_error != null)
+                        Text(
+                          '最新请求失败，保留当前内容：$_error',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.red,
                           ),
                         ),
-                      );
-                    }, childCount: _imageUrls.length),
+                      if (_error != null) const SizedBox(height: 8),
+                      Text(
+                        '推荐套图：${_suggestions.length} 个',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 4),
+                      if (_suggestions.isNotEmpty)
+                        ExpansionTile(
+                          title: Text('推荐套图（${_suggestions.length}）'),
+                          childrenPadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
+                          children: [
+                            PicContentGrid(
+                              contents: _suggestions,
+                              headers: _imageHeaders,
+                              itemWidth: 140,
+                              padding: EdgeInsets.zero,
+                              enableHover: false,
+                              showDownloadButton: false,
+                              onItemTap: (item) {
+                                // ignore: avoid_print
+                                print(
+                                  'Tap suggestion -> title="${item.title}", href="${item.href}"',
+                                );
+                                if (item.href.isEmpty) return;
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => PicDetailPage(
+                                      content: item,
+                                      host: widget.host,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                    ],
                   ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
+                      Text(
+                        '当前页图片：${_imageUrls.length} 张',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 8),
+                sliver: _imageUrls.isEmpty
+                    ? const SliverToBoxAdapter(
+                        child: Center(child: Text('当前页暂无图片')),
+                      )
+                    : SliverList(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final url = _imageUrls[index];
+                          final total = _imageUrls.length;
+                          return Padding(
+                            key: ValueKey<String>(url),
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Stack(
+                                alignment: Alignment.topCenter,
+                                children: [
+                                  CachedNetworkImage(
+                                    imageUrl: url,
+                                    httpHeaders: _imageHeaders,
+                                    alignment: Alignment.topCenter,
+                                    fit: BoxFit.contain,
+                                    placeholder: (context, _) => Container(
+                                      color: theme.colorScheme.surfaceVariant
+                                          .withValues(alpha: 0.5),
+                                      height: 160,
+                                      alignment: Alignment.center,
+                                      child: const CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                    errorWidget: (context, _, __) => Container(
+                                      color: theme.colorScheme.surfaceVariant
+                                          .withValues(alpha: 0.5),
+                                      height: 160,
+                                      alignment: Alignment.center,
+                                      child: const Icon(
+                                        Icons.broken_image_outlined,
+                                        size: 32,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    left: 8,
+                                    top: 8,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.55),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        '${index + 1}/$total',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }, childCount: _imageUrls.length),
+                      ),
+              ),
+            ],
           ),
-        ],
-      ),
+              if (_isLoading)
+                const Align(
+                  alignment: Alignment.topCenter,
+                  child: LinearProgressIndicator(minHeight: 2),
+                ),
+            ],
+          ),
+        ),
+        if (_isLoading && _hasLoadedOnce)
+          Positioned.fill(
+            child: Stack(
+              children: const [
+                ModalBarrier(
+                  dismissible: false,
+                  color: Color(0x33000000),
+                ),
+                Center(
+                  child: SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
