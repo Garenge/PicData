@@ -290,4 +290,3 @@ Future<List<PicItem>> fetchPicItems(String listUrl) async {
   - 因为**解析网页比下载图片快很多**，`ContentParserManager.prepareToDoNextTask:` 里还有一层控制：当前状态为 1/2 的任务数量超过一定数（>4）时就暂时不继续启动新的解析任务，防止任务堆积。
 
 在 Flutter 中，你可以类似地实现一个“多页详情遍历器”：每次请求详情页 -> 解析图片 & nextUrl -> 累计图片并开始下载 -> 如果 nextUrl 为空则结束，否则递归或循环下一页。
-

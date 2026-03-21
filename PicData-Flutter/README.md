@@ -17,6 +17,15 @@
 
 > 上述功能目前尚未实现，仅作为后续演进方向的设计记录。
 
+## 文档索引
+
+- 首页列表右侧索引实现：`homepage_list_index_guide.md`
+- 缩略图占位图与加载策略：`thumbnail_loading_strategy.md`
+- 站点解析规则总览：`doc/parsing_rules.md`
+- Flutter 抓取与解析实践笔记：`flutter_spider_notes.md`
+- 本地数据库设计：`lib/persistence/DATABASE_DESIGN.md`
+- iOS 启动图资源说明：`ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md`
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.
