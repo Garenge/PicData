@@ -17,18 +17,6 @@
 
 > 上述功能目前尚未实现，仅作为后续演进方向的设计记录。
 
-### 2. 套图列表交互（已完成）
-
-- 已支持套图列表下一页 / 上一页。
-- 已支持点击套图进入详情页。
-- 缩略图占位图与加载策略已实现，详见 `THUMBNAIL_LOADING_STRATEGY.md`。
-
-### 3. 套图详情页悬浮按钮（已完成）
-
-- 已在详情页提供两个悬浮按钮：跳到最顶上、跳到最底下。
-- 使用 `ScrollController` + `animateTo` 实现平滑滚动，并在 `dispose` 中释放 controller。
-- 已在长图场景验证不影响现有图片加载与展示性能。
-
 ## Getting Started
 
 This project is a starting point for a Flutter application.
