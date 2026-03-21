@@ -23,6 +23,7 @@ class PicDetailPage extends StatefulWidget {
 }
 
 class _PicDetailPageState extends State<PicDetailPage> {
+  final ScrollController _scrollController = ScrollController();
   late String _currentHref;
   late List<String> _hrefHistory;
 
@@ -42,9 +43,55 @@ class _PicDetailPageState extends State<PicDetailPage> {
     _loadDetailForHref(_currentHref);
   }
 
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   bool get _canGoPrev => _hrefHistory.length > 1;
 
   String? get _prevHref => _canGoPrev ? _hrefHistory[_hrefHistory.length - 2] : null;
+
+  Future<void> _scrollToTop() async {
+    if (!_scrollController.hasClients) return;
+    await _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Future<void> _scrollToBottom() async {
+    if (!_scrollController.hasClients) return;
+    final maxExtent = _scrollController.position.maxScrollExtent;
+    await _scrollController.animateTo(
+      maxExtent,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Widget _buildFloatingActions() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FloatingActionButton.small(
+          heroTag: 'pic-detail-to-top',
+          onPressed: _scrollToTop,
+          tooltip: '回到顶部',
+          child: const Icon(Icons.vertical_align_top),
+        ),
+        const SizedBox(height: 12),
+        FloatingActionButton.small(
+          heroTag: 'pic-detail-to-bottom',
+          onPressed: _scrollToBottom,
+          tooltip: '跳到底部',
+          child: const Icon(Icons.vertical_align_bottom),
+        ),
+      ],
+    );
+  }
 
   Future<bool> _loadDetailForHref(String href) async {
     if (href.isEmpty) return false;
@@ -254,6 +301,7 @@ class _PicDetailPageState extends State<PicDetailPage> {
     if (_isLoading) {
       return Scaffold(
         appBar: _buildAppBar(titleText),
+        floatingActionButton: _buildFloatingActions(),
         body: const Center(
           child: SizedBox(
             width: 24,
@@ -267,6 +315,7 @@ class _PicDetailPageState extends State<PicDetailPage> {
     if (_error != null) {
       return Scaffold(
         appBar: _buildAppBar(titleText),
+        floatingActionButton: _buildFloatingActions(),
         body: Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
@@ -279,7 +328,9 @@ class _PicDetailPageState extends State<PicDetailPage> {
 
     return Scaffold(
       appBar: _buildAppBar(titleText),
+      floatingActionButton: _buildFloatingActions(),
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
