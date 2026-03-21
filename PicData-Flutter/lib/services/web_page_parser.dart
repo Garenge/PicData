@@ -104,6 +104,10 @@ class WebPageParser {
     final sourceType = host?.sourceType;
     if (sourceType == null) return null;
 
+    print(
+      'WebPageParser: parseNextPageUrl entryUrl="${entryUrl ?? ''}" sourceType=$sourceType',
+    );
+
     switch (sourceType) {
       case 3:
         return _parseSourceType3NextPage(html, host);
@@ -172,6 +176,82 @@ class WebPageParser {
       default:
         return <PicContent>[];
     }
+  }
+
+  /// 解析套图详情页的“下一页”链接。
+  ///
+  /// 说明：
+  /// - 不改变原有列表分页能力，只补充详情页 next 的少量站点差异。
+  /// - 返回补全为绝对 URL；若未找到则返回 null。
+  String? parseDetailNextPageUrl({
+    required String html,
+    required PicHost? host,
+    String? detailUrl,
+  }) {
+    if (html.isEmpty) return null;
+
+    final sourceType = host?.sourceType;
+    if (sourceType == null) return null;
+
+    print(
+      'WebPageParser: parseDetailNextPageUrl detailUrl="${detailUrl ?? ''}" '
+      'sourceType=$sourceType hostHostUrl="${host?.hostUrl ?? ''}"',
+    );
+
+    switch (sourceType) {
+      case 3:
+        final next = _parseSourceType3DetailNextPage(html, host);
+        print('WebPageParser: sourceType=3 detail nextHref="${next ?? ''}"');
+        return next;
+      default:
+        // 大部分站点可以复用“列表页 next”解析策略。
+        final next = parseNextPageUrl(
+          html: html,
+          host: host,
+          entryUrl: detailUrl,
+        );
+        print(
+          'WebPageParser: sourceType=$sourceType fallback nextHref="${next ?? ''}"',
+        );
+        return next;
+    }
+  }
+
+  /// `sourceType = 3`（hitxhot）详情页 next 解析。
+  ///
+  /// notes 中的 OC 规则：详情下一页依据 `<a>` 的文字（如 “Next >”）。
+  /// Flutter 端先做保守匹配：在 `.nav-links` 下寻找包含 “Next” 的链接。
+  String? _parseSourceType3DetailNextPage(String html, PicHost? host) {
+    final document = html_parser.parse(html);
+    final nextContainer = document.querySelector('.nav-links');
+    if (nextContainer == null) return null;
+
+    final allLinks = nextContainer.querySelectorAll('a');
+    print(
+      'WebPageParser: sourceType=3 detail next selector ".nav-links" found, '
+      'aCount=${allLinks.length}',
+    );
+
+    var matched = 0;
+    for (final link in nextContainer.querySelectorAll('a')) {
+      final text = link.text.trim();
+      if (text.contains('Next')) {
+        matched++;
+        final href = link.attributes['href']?.trim() ?? '';
+        final resolved = _resolveUrl(href, host);
+        print(
+          'WebPageParser: sourceType=3 detail next match text="$text" '
+          'rawHref="$href" resolvedHref="$resolved"',
+        );
+        if (resolved.isNotEmpty) return resolved;
+      }
+    }
+
+    print(
+      'WebPageParser: sourceType=3 detail next matches=$matched but '
+      'all resolved hrefs were empty',
+    );
+    return null;
   }
 
   /// 尝试基于站点配置把相对地址补全为绝对 URL。
@@ -859,13 +939,22 @@ class WebPageParser {
   String? _parseSourceType3NextPage(String html, PicHost? host) {
     final document = html_parser.parse(html);
     final nextContainer = document.querySelector('.nav-next');
-    if (nextContainer == null) return null;
+    if (nextContainer == null) {
+      print('WebPageParser: sourceType=3 next ".nav-next" not found');
+      return null;
+    }
 
+    final links = nextContainer.querySelectorAll('a');
+    print('WebPageParser: sourceType=3 next ".nav-next" aCount=${links.length}');
     for (final link in nextContainer.querySelectorAll('a')) {
       final text = link.text.trim();
       if (text == '→' || text.contains('→')) {
         final href = link.attributes['href']?.trim();
         final resolved = _resolveUrl(href, host);
+        print(
+          'WebPageParser: sourceType=3 next match text="$text" '
+          'rawHref="${href ?? ''}" resolvedHref="$resolved"',
+        );
         if (resolved.isNotEmpty) return resolved;
         break;
       }
@@ -876,13 +965,20 @@ class WebPageParser {
   String? _parseSourceType4NextPage(String html, PicHost? host) {
     final document = html_parser.parse(html);
     final nextContainer = document.querySelector('.page');
-    if (nextContainer == null) return null;
+    if (nextContainer == null) {
+      print('WebPageParser: sourceType=4 next ".page" not found');
+      return null;
+    }
 
     for (final link in nextContainer.querySelectorAll('a')) {
       final text = link.text.trim();
       if (text == '下页') {
         final href = link.attributes['href']?.trim();
         final resolved = _resolveUrl(href, host);
+        print(
+          'WebPageParser: sourceType=4 next match text="$text" '
+          'rawHref="$href" resolvedHref="$resolved"',
+        );
         if (resolved.isNotEmpty) return resolved;
         break;
       }
@@ -893,7 +989,10 @@ class WebPageParser {
   String? _parseSourceType5NextPage(String html, PicHost? host) {
     final document = html_parser.parse(html);
     final nextContainer = document.querySelector('#pager');
-    if (nextContainer == null) return null;
+    if (nextContainer == null) {
+      print('WebPageParser: sourceType=5 next "#pager" not found');
+      return null;
+    }
 
     for (final link in nextContainer.querySelectorAll('a')) {
       final text = link.text.trim();
@@ -901,6 +1000,10 @@ class WebPageParser {
       if (text == nextPageTitle || text.contains(nextPageTitle)) {
         final href = link.attributes['href']?.trim();
         final resolved = _resolveUrl(href, host);
+        print(
+          'WebPageParser: sourceType=5 next match text="$text" '
+          'rawHref="$href" resolvedHref="$resolved"',
+        );
         if (resolved.isNotEmpty) return resolved;
         break;
       }
@@ -911,15 +1014,32 @@ class WebPageParser {
   String? _parseSourceType10NextPage(String html, PicHost? host) {
     final document = html_parser.parse(html);
     final nextContainer = document.querySelector('.pagination-list');
-    if (nextContainer == null) return null;
+    if (nextContainer == null) {
+      print('WebPageParser: sourceType=10 next ".pagination-list" not found');
+      return null;
+    }
 
     final links = nextContainer.querySelectorAll('a');
-    if (links.isEmpty) return null;
+    if (links.isEmpty) {
+      print('WebPageParser: sourceType=10 next ".pagination-list" a empty');
+      return null;
+    }
+    print('WebPageParser: sourceType=10 next aCount=${links.length}');
+
+    // 先按“当前页标识”找后继链接（和列表分页保持一致的常见实现）。
+    //
+    // 现实中站点会有多种激活 class 命名，这里做兼容。
+    const activeClassTokens = <String>[
+      'is-current',
+      'is-active',
+      'active',
+      'current',
+    ];
 
     var currentIndex = -1;
     for (var i = 0; i < links.length; i++) {
       final classes = links[i].attributes['class'] ?? '';
-      if (classes.contains('is-current')) {
+      if (activeClassTokens.any((t) => classes.contains(t))) {
         currentIndex = i;
         break;
       }
@@ -929,6 +1049,35 @@ class WebPageParser {
       final nextLink = links[currentIndex + 1];
       final href = nextLink.attributes['href']?.trim();
       final resolved = _resolveUrl(href, host);
+      print(
+        'WebPageParser: sourceType=10 next activeIndex=$currentIndex '
+        'nextRawHref="$href" resolvedHref="$resolved"',
+      );
+      if (resolved.isNotEmpty) return resolved;
+    }
+
+    // 再做文本/符号兜底匹配：有些详情页 next 不一定带“is-current”，
+    // 但 next 按钮一般具有明确的文案（下一页 / Next / 下一頁 / →）。
+    final keywords = <String>[
+      '下一页',
+      '下一頁',
+      'Next',
+      'next',
+      '→',
+      '下页',
+    ];
+
+    for (final link in links) {
+      final text = link.text.trim();
+      if (text.isEmpty) continue;
+      if (!keywords.any((k) => text.contains(k))) continue;
+
+      final href = link.attributes['href']?.trim() ?? '';
+      final resolved = _resolveUrl(href, host);
+      print(
+        'WebPageParser: sourceType=10 next keyword match text="$text" '
+        'rawHref="$href" resolvedHref="$resolved"',
+      );
       if (resolved.isNotEmpty) return resolved;
     }
 

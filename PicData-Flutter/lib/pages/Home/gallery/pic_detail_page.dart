@@ -23,27 +23,133 @@ class PicDetailPage extends StatefulWidget {
 }
 
 class _PicDetailPageState extends State<PicDetailPage> {
+  late String _currentHref;
+  late List<String> _hrefHistory;
+
   bool _isLoading = false;
   Object? _error;
   List<String> _imageUrls = <String>[];
   List<PicContent> _suggestions = <PicContent>[];
+  String? _nextHref;
   Map<String, String>? _imageHeaders;
 
   @override
   void initState() {
     super.initState();
-    _imageHeaders = _buildImageHeaders();
-    _loadDetail();
+    _currentHref = widget.content.href;
+    _hrefHistory = <String>[_currentHref];
+    _imageHeaders = _buildImageHeaders(_currentHref);
+    _loadDetailForHref(_currentHref);
   }
 
-  Map<String, String>? _buildImageHeaders() {
+  bool get _canGoPrev => _hrefHistory.length > 1;
+
+  String? get _prevHref => _canGoPrev ? _hrefHistory[_hrefHistory.length - 2] : null;
+
+  Future<bool> _loadDetailForHref(String href) async {
+    if (href.isEmpty) return false;
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _nextHref = null; // 避免上一页的 nextHref 误显示
+      _imageHeaders = _buildImageHeaders(href);
+    });
+
+    try {
+      final html = await NetClient.instance.getText(
+        href,
+        headers: _imageHeaders,
+      );
+
+      print(
+        'PicDetailPage: load detail href="$href" '
+        'hostTitle="${widget.host?.title}" hostMark="${widget.host?.mark}" '
+        'sourceType=${widget.host?.sourceType} hostUrl="${widget.host?.hostUrl}"',
+      );
+
+      final parser = const WebPageParser();
+      final images = parser.parseDetailImages(
+        html: html,
+        host: widget.host,
+        detailUrl: href,
+      );
+
+      final suggestions = parser.parseDetailSuggestions(
+        html: html,
+        host: widget.host,
+        detailUrl: href,
+      );
+
+      final nextHref = parser.parseDetailNextPageUrl(
+        html: html,
+        host: widget.host,
+        detailUrl: href,
+      );
+
+      print(
+        'PicDetailPage: parsed href="$href" '
+        'images=${images.length} suggestions=${suggestions.length} '
+        'nextHref="${nextHref ?? ''}"',
+      );
+
+      // 只打印“样例”而不是整数组，避免日志失焦。
+      final imageSample = images.take(3).join(' | ');
+      final suggestionSample = suggestions
+          .take(3)
+          .map((e) => '${e.title} => ${e.href}')
+          .join(' | ');
+      // ignore: avoid_print
+      print(
+        'PicDetailPage: samples (first3) '
+        'imageUrls="[$imageSample]" '
+        'suggestions="[$suggestionSample]"',
+      );
+
+      if (!mounted) return false;
+      setState(() {
+        _currentHref = href;
+        _imageUrls = images;
+        _suggestions = suggestions;
+        _nextHref = (nextHref != null && nextHref.isNotEmpty) ? nextHref : null;
+        print(
+          'PicDetailPage._loadDetailForHref.setState: '
+          'committed nextHref="${_nextHref ?? ''}" '
+          'hasNextHref=${_nextHref?.isNotEmpty ?? false}',
+        );
+        _isLoading = false;
+      });
+      print(
+        'PicDetailPage._loadDetailForHref: after setState call '
+        'mounted=$mounted nextHref="${_nextHref ?? ''}" isLoading=$_isLoading',
+      );
+      return true;
+    } catch (e, stack) {
+      // ignore: avoid_print
+      print('PicDetailPage _loadDetailForHref ERROR for href=$href');
+      // ignore: avoid_print
+      print('  errorType=${e.runtimeType}');
+      // ignore: avoid_print
+      print('  error=$e');
+      // ignore: avoid_print
+      print('  stackTrace=$stack');
+
+      if (!mounted) return false;
+      setState(() {
+        _isLoading = false;
+        _error = e;
+      });
+      return false;
+    }
+  }
+
+  Map<String, String>? _buildImageHeaders(String href) {
     final headers = <String, String>{};
 
     // 详情页图片请求的 Referer 更接近 OC 端逻辑：
     // 使用当前套图页的地址作为 Referer，而不是站点级的 HOST_URL。
-    final detailHref = widget.content.href;
-    if (detailHref.isNotEmpty) {
-      headers['referer'] = detailHref;
+    if (href.isNotEmpty) {
+      headers['referer'] = href;
     } else {
       final fallbackReferer = widget.host?.referer;
       if (fallbackReferer != null && fallbackReferer.isNotEmpty) {
@@ -60,80 +166,76 @@ class _PicDetailPageState extends State<PicDetailPage> {
     return headers;
   }
 
-  Future<void> _loadDetail() async {
-    final href = widget.content.href;
-    if (href.isEmpty) {
-      // ignore: avoid_print
-      print('PicDetailPage: empty href for content="${widget.content.title}"');
-      return;
-    }
+  AppBar _buildAppBar(String titleText) {
+    final hasNextHref = _nextHref?.isNotEmpty ?? false;
+    print(
+      'PicDetailPage._buildAppBar: isLoading=$_isLoading '
+      'hasNextHref=$hasNextHref nextHref="${_nextHref ?? ''}"',
+    );
+    return AppBar(
+      automaticallyImplyLeading: false,
+      leadingWidth: _canGoPrev ? 132 : 56,
+      leading: Row(
+        children: [
+          const BackButton(),
+          if (_canGoPrev)
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: _isLoading
+                      ? null
+                      : () async {
+                          final currentHref = _hrefHistory.last;
+                          final prevHref = _prevHref;
+                          if (prevHref == null || prevHref.isEmpty) return;
 
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+                          _hrefHistory.removeLast();
+                          final success = await _loadDetailForHref(prevHref);
+                          if (!success) {
+                            // 回滚：尽量保留上一页按钮前的内容。
+                            _hrefHistory.add(currentHref);
+                            await _loadDetailForHref(currentHref);
+                          }
+                        },
+                  child: const Text('上一页'),
+                ),
+              ),
+            ),
+        ],
+      ),
+      title: GestureDetector(
+        onTap: () => debugPrintPageBackdoorInfo(
+          className: 'PicDetailPage',
+          filePath: 'PicData-Flutter/lib/pages/Home/gallery/pic_detail_page.dart',
+        ),
+        child: Text(
+          titleText,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      actions: [
+        if (hasNextHref)
+          TextButton(
+            onPressed: _isLoading
+                ? null
+                : () async {
+                    final currentHref = _hrefHistory.last;
+                    final nextHref = _nextHref;
+                    if (nextHref == null || nextHref.isEmpty) return;
 
-    try {
-      final html = await NetClient.instance.getText(
-        href,
-        headers: _imageHeaders,
-      );
-
-      final parser = const WebPageParser();
-      final images = parser.parseDetailImages(
-        html: html,
-        host: widget.host,
-        detailUrl: href,
-      );
-      final suggestions = parser.parseDetailSuggestions(
-        html: html,
-        host: widget.host,
-        detailUrl: href,
-      );
-
-      // ignore: avoid_print
-      print('PicDetailPage: imageUrls for href="$href":');
-      // ignore: avoid_print
-      print(images);
-
-      // ignore: avoid_print
-      print('PicDetailPage: suggestions for href="$href":');
-      // 只打印关键字段，避免日志过长。
-      // ignore: avoid_print
-      print(
-        suggestions
-            .map(
-              (e) => {
-                'title': e.title,
-                'href': e.href,
-                'thumbnail': e.thumbnail,
-              },
-            )
-            .toList(),
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _imageUrls = images;
-        _suggestions = suggestions;
-        _isLoading = false;
-      });
-    } catch (e, stack) {
-      // ignore: avoid_print
-      print('PicDetailPage _loadDetail ERROR for href=$href');
-      // ignore: avoid_print
-      print('  errorType=${e.runtimeType}');
-      // ignore: avoid_print
-      print('  error=$e');
-      // ignore: avoid_print
-      print('  stackTrace=$stack');
-
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _error = e;
-      });
-    }
+                    _hrefHistory.add(nextHref);
+                    final success = await _loadDetailForHref(nextHref);
+                    if (!success) {
+                      // 回滚：尽量保留点击 next 前的内容。
+                      _hrefHistory.removeLast();
+                      await _loadDetailForHref(currentHref);
+                    }
+                  },
+            child: const Text('下一页'),
+          ),
+      ],
+    );
   }
 
   @override
@@ -141,21 +243,17 @@ class _PicDetailPageState extends State<PicDetailPage> {
     final theme = Theme.of(context);
     final hostTitle = widget.host?.title ?? widget.host?.mark ?? '-';
     final sourceType = widget.host?.sourceType?.toString() ?? '-';
+    final titleText = widget.content.title.isEmpty ? '套图详情' : widget.content.title;
+    final hasNextHref = _nextHref?.isNotEmpty ?? false;
+    print(
+      'PicDetailPage.build: isLoading=$_isLoading error=${_error != null} '
+      'hasNextHref=$hasNextHref nextHref="${_nextHref ?? ''}" '
+      'images=${_imageUrls.length} suggestions=${_suggestions.length}',
+    );
 
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(
-          title: GestureDetector(
-            onTap: () => debugPrintPageBackdoorInfo(
-              className: 'PicDetailPage',
-              filePath: 'PicData-Flutter/lib/pages/Home/gallery/pic_detail_page.dart',
-            ),
-            child: Text(
-              widget.content.title.isEmpty ? '套图详情' : widget.content.title,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ),
+        appBar: _buildAppBar(titleText),
         body: const Center(
           child: SizedBox(
             width: 24,
@@ -168,18 +266,7 @@ class _PicDetailPageState extends State<PicDetailPage> {
 
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(
-          title: GestureDetector(
-            onTap: () => debugPrintPageBackdoorInfo(
-              className: 'PicDetailPage',
-              filePath: 'PicData-Flutter/lib/pages/Home/gallery/pic_detail_page.dart',
-            ),
-            child: Text(
-              widget.content.title.isEmpty ? '套图详情' : widget.content.title,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ),
+        appBar: _buildAppBar(titleText),
         body: Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
@@ -191,18 +278,7 @@ class _PicDetailPageState extends State<PicDetailPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: GestureDetector(
-          onTap: () => debugPrintPageBackdoorInfo(
-            className: 'PicDetailPage',
-            filePath: 'PicData-Flutter/lib/pages/Home/gallery/pic_detail_page.dart',
-          ),
-          child: Text(
-            widget.content.title.isEmpty ? '套图详情' : widget.content.title,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ),
+      appBar: _buildAppBar(titleText),
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -217,7 +293,7 @@ class _PicDetailPageState extends State<PicDetailPage> {
                   ),
                   const SizedBox(height: 8),
                   SelectableText(
-                    '详情地址（href）：\n${widget.content.href}',
+                    '详情地址（href）：\n$_currentHref',
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 8),

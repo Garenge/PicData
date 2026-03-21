@@ -32,6 +32,10 @@
   - 解析“下一页”链接并循环抓取，直到 OC 逻辑中的最终页；
   - 将所有页的图片合并为一套完整图集，在详情页中以列表或瀑布流的方式展示。
 
+### 4. 套图详情页悬浮按钮
+
+- 详情页添加两个悬浮按钮：跳到最顶上、跳到最底下
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.
