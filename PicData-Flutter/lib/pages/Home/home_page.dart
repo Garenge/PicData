@@ -4,6 +4,7 @@ import 'package:lpinyin/lpinyin.dart';
 import '../../models/pic_net_models.dart';
 import '../../models/home_entry.dart';
 import '../../services/pic_net_service.dart';
+import '../../debug/page_backdoor.dart';
 import 'hosts/hosts_drawer.dart';
 import 'gallery/tag_gallery_page.dart';
 
@@ -147,7 +148,13 @@ class _HomePageState extends State<HomePage> {
             );
           },
         ),
-        title: const Text('导航'),
+        title: GestureDetector(
+          onTap: () => debugPrintPageBackdoorInfo(
+            className: 'HomePage',
+            filePath: 'PicData-Flutter/lib/pages/Home/home_page.dart',
+          ),
+          child: const Text('导航'),
+        ),
         actions: [
           IconButton(
             tooltip: _viewType == HomeViewType.tags ? '切换到列表' : '切换到标签',

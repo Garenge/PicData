@@ -6,6 +6,7 @@ import '../../../models/pic_net_models.dart';
 import '../../../services/net_client.dart';
 import '../../../services/web_page_parser.dart';
 import 'pic_content_grid.dart';
+import '../../../debug/page_backdoor.dart';
 
 /// 套图详情页。
 ///
@@ -144,9 +145,15 @@ class _PicDetailPageState extends State<PicDetailPage> {
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(
-            widget.content.title.isEmpty ? '套图详情' : widget.content.title,
-            overflow: TextOverflow.ellipsis,
+          title: GestureDetector(
+            onTap: () => debugPrintPageBackdoorInfo(
+              className: 'PicDetailPage',
+              filePath: 'PicData-Flutter/lib/pages/Home/gallery/pic_detail_page.dart',
+            ),
+            child: Text(
+              widget.content.title.isEmpty ? '套图详情' : widget.content.title,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ),
         body: const Center(
@@ -162,9 +169,15 @@ class _PicDetailPageState extends State<PicDetailPage> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(
-            widget.content.title.isEmpty ? '套图详情' : widget.content.title,
-            overflow: TextOverflow.ellipsis,
+          title: GestureDetector(
+            onTap: () => debugPrintPageBackdoorInfo(
+              className: 'PicDetailPage',
+              filePath: 'PicData-Flutter/lib/pages/Home/gallery/pic_detail_page.dart',
+            ),
+            child: Text(
+              widget.content.title.isEmpty ? '套图详情' : widget.content.title,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ),
         body: Padding(
@@ -179,9 +192,15 @@ class _PicDetailPageState extends State<PicDetailPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.content.title.isEmpty ? '套图详情' : widget.content.title,
-          overflow: TextOverflow.ellipsis,
+        title: GestureDetector(
+          onTap: () => debugPrintPageBackdoorInfo(
+            className: 'PicDetailPage',
+            filePath: 'PicData-Flutter/lib/pages/Home/gallery/pic_detail_page.dart',
+          ),
+          child: Text(
+            widget.content.title.isEmpty ? '套图详情' : widget.content.title,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ),
       body: CustomScrollView(

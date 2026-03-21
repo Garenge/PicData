@@ -5,6 +5,7 @@ import '../../../models/pic_net_models.dart';
 import '../../../models/pic_content.dart';
 import '../../../services/net_client.dart';
 import '../../../services/web_page_parser.dart';
+import '../../../debug/page_backdoor.dart';
 import 'pic_detail_page.dart';
 
 /// 某个标签 / 入口对应的图集列表页面。
@@ -118,7 +119,15 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.entry.title)),
+      appBar: AppBar(
+        title: GestureDetector(
+          onTap: () => debugPrintPageBackdoorInfo(
+            className: 'TagGalleryPage',
+            filePath: 'PicData-Flutter/lib/pages/Home/gallery/tag_gallery_page.dart',
+          ),
+          child: Text(widget.entry.title),
+        ),
+      ),
       body: FutureBuilder<List<PicContent>>(
         future: _contentsFuture,
         builder: (context, snapshot) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../models/pic_net_models.dart';
+import '../../../debug/page_backdoor.dart';
 
 class HostsDrawer extends StatelessWidget {
   const HostsDrawer({
@@ -47,9 +48,15 @@ class HostsDrawer extends StatelessWidget {
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: const Text(
-        '服务列表',
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      child: GestureDetector(
+        onTap: () => debugPrintPageBackdoorInfo(
+          className: 'HostsDrawer',
+          filePath: 'PicData-Flutter/lib/pages/Home/hosts/hosts_drawer.dart',
+        ),
+        child: const Text(
+          '服务列表',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
@@ -223,7 +230,6 @@ class HostsDrawer extends StatelessWidget {
 
   void _showCenterHud(BuildContext context, String message) {
     final overlay = Overlay.of(context);
-    if (overlay == null) return;
 
     final entry = OverlayEntry(
       builder: (context) => IgnorePointer(
