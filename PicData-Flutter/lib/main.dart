@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'pages/Home/home_page.dart';
+import 'pages/main_tab/main_tab_page.dart';
 import 'services/pic_net_service.dart';
 
 void main() {
@@ -44,7 +44,7 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const HomePage(),
+      home: const MainTabPage(),
     );
   }
 }
