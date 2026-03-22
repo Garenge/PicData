@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -9,13 +10,15 @@ class DownloadFileService {
   static final DownloadFileService instance = DownloadFileService._internal();
 
   static const String _customRootPathKey = 'download_custom_root_path';
-  static const String _defaultFolderName = 'picDownloads';
+  static const String _defaultFolderName = 'PicDownloads';
 
   SharedPreferences? _prefs;
+  final ValueNotifier<String> rootPathNotifier = ValueNotifier<String>('');
 
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
-    await getRootDirectory();
+    final root = await getRootDirectory();
+    _notifyRootPathChanged(root.path);
   }
 
   Future<String> getRootPath() async {
@@ -31,6 +34,7 @@ class DownloadFileService {
       if (!await dir.exists()) {
         await dir.create(recursive: true);
       }
+      _notifyRootPathChanged(dir.path);
       return dir;
     }
 
@@ -39,6 +43,7 @@ class DownloadFileService {
     if (!await defaultDir.exists()) {
       await defaultDir.create(recursive: true);
     }
+    _notifyRootPathChanged(defaultDir.path);
     return defaultDir;
   }
 
@@ -53,12 +58,14 @@ class DownloadFileService {
     }
     _prefs ??= await SharedPreferences.getInstance();
     await _prefs!.setString(_customRootPathKey, dir.path);
+    _notifyRootPathChanged(dir.path);
   }
 
   Future<void> resetToDefaultRootPath() async {
     _prefs ??= await SharedPreferences.getInstance();
     await _prefs!.remove(_customRootPathKey);
-    await getRootDirectory();
+    final root = await getRootDirectory();
+    _notifyRootPathChanged(root.path);
   }
 
   Future<Directory> ensureSubDirectory(String folderName) async {
@@ -86,5 +93,10 @@ class DownloadFileService {
         ? await getRootDirectory()
         : await ensureSubDirectory(subFolder);
     return File('${parent.path}/$safeFileName');
+  }
+
+  void _notifyRootPathChanged(String path) {
+    if (rootPathNotifier.value == path) return;
+    rootPathNotifier.value = path;
   }
 }
