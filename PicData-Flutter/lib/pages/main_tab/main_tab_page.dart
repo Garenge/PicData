@@ -4,6 +4,7 @@ import '../downloads/downloads_page.dart';
 import '../files/files_page.dart';
 import '../navigation/navigation_page.dart';
 import '../settings/settings_page.dart';
+import 'tab_root_navigator.dart';
 
 class MainTabPage extends StatefulWidget {
   const MainTabPage({super.key});
@@ -14,17 +15,14 @@ class MainTabPage extends StatefulWidget {
 
 class _MainTabPageState extends State<MainTabPage> {
   int _selectedIndex = 0;
-
-  static final List<Widget> _pages = <Widget>[
-    const NavigationPage(),
-    const FilesPage(),
-    const DownloadsPage(),
-    const SettingsPage(),
-  ];
+  int _filesRefreshSignal = 0;
 
   void _onTap(int index) {
     setState(() {
       _selectedIndex = index;
+      if (index == 1) {
+        _filesRefreshSignal++;
+      }
     });
   }
 
@@ -33,7 +31,19 @@ class _MainTabPageState extends State<MainTabPage> {
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
-        children: _pages,
+        children: <Widget>[
+          const NavigationPage(),
+          TabRootNavigator(
+            homeBuilder: (_) =>
+                FilesPage(refreshSignal: _filesRefreshSignal),
+          ),
+          TabRootNavigator(
+            homeBuilder: (_) => const DownloadsPage(),
+          ),
+          TabRootNavigator(
+            homeBuilder: (_) => const SettingsPage(),
+          ),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
