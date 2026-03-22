@@ -53,12 +53,15 @@ class PicContentGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxWidth = constraints.maxWidth;
-        final int crossAxisCount =
-            (maxWidth / (itemWidth + spacing)).floor().clamp(1, 6);
+        final int crossAxisCount = (maxWidth / (itemWidth + spacing))
+            .floor()
+            .clamp(1, 6);
 
         final gridWidth = crossAxisCount * (itemWidth + spacing) - spacing;
-        final double sidePadding =
-            ((maxWidth - gridWidth) / 2).clamp(0, double.infinity);
+        final double sidePadding = ((maxWidth - gridWidth) / 2).clamp(
+          0,
+          double.infinity,
+        );
 
         return Padding(
           padding: padding,
@@ -142,9 +145,7 @@ class _PicContentGridItemState extends State<_PicContentGridItem>
     final card = Card(
       elevation: enableHover && _isHovered ? 8 : 2,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () => widget.onTap?.call(item),
         hoverColor: Colors.black.withValues(alpha: 0.02),
@@ -216,8 +217,9 @@ class _PicContentGridItemState extends State<_PicContentGridItem>
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeOut,
-        transform:
-            _isHovered ? (Matrix4.identity()..scale(1.02)) : Matrix4.identity(),
+        transform: _isHovered
+            ? (Matrix4.identity()..scale(1.02))
+            : Matrix4.identity(),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           boxShadow: _isHovered
@@ -322,4 +324,3 @@ class _GalleryThumbnail extends StatelessWidget {
     );
   }
 }
-
