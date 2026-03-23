@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'debug/dev_overlay.dart';
 
 import 'pages/main_tab/main_tab_page.dart';
 import 'services/download_file_service.dart';
@@ -35,18 +36,26 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     if (!_initialized) {
-      return const MaterialApp(
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
         home: Scaffold(body: Center(child: CircularProgressIndicator())),
       );
     }
 
     return MaterialApp(
       title: 'PicData',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const MainTabPage(),
+      home: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          const MainTabPage(),
+          const DevDebugOverlay(),
+        ],
+      ),
     );
   }
 }
