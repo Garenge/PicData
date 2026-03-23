@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lpinyin/lpinyin.dart';
 
-import '../../models/pic_net_models.dart';
-import '../../models/home_entry.dart';
-import '../../services/pic_net_service.dart';
-import '../../debug/page_backdoor.dart';
+import 'package:pic_data/models/pic_net_models.dart';
+import 'package:pic_data/models/home_entry.dart';
+import 'package:pic_data/services/pic_net_service.dart';
+import 'package:pic_data/debug/page_backdoor.dart';
 import 'hosts/hosts_drawer.dart';
 import 'gallery/tag_gallery_page.dart';
 

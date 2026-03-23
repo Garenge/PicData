@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../models/home_entry.dart';
-import '../../../models/pic_net_models.dart';
-import '../../../models/pic_content.dart';
-import '../../../services/net_client.dart';
-import '../../../services/web_page_parser.dart';
-import '../../../debug/page_backdoor.dart';
+import 'package:pic_data/models/home_entry.dart';
+import 'package:pic_data/models/pic_net_models.dart';
+import 'package:pic_data/models/pic_content.dart';
+import 'package:pic_data/services/net_client.dart';
+import 'package:pic_data/services/web_page_parser.dart';
+import 'package:pic_data/debug/page_backdoor.dart';
 import 'pic_detail_page.dart';
 
 /// 某个标签 / 入口对应的图集列表页面。

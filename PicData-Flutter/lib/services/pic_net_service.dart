@@ -2,7 +2,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:lpinyin/lpinyin.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/pic_net_models.dart';
+import 'package:pic_data/models/pic_net_models.dart';
 
 PicNetConfig? globalPicNetConfig;
 

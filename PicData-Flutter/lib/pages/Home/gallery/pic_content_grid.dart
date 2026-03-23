@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import '../../../models/pic_content.dart';
+import 'package:pic_data/models/pic_content.dart';
 
 /// 通用的套图网格组件。
 ///

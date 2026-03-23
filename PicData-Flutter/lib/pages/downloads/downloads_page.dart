@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../debug/page_backdoor.dart';
+import 'package:pic_data/debug/page_backdoor.dart';
 
 class DownloadsPage extends StatelessWidget {
   const DownloadsPage({super.key});

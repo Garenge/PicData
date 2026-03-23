@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../models/pic_net_models.dart';
-import '../../../debug/page_backdoor.dart';
+import 'package:pic_data/models/pic_net_models.dart';
+import 'package:pic_data/debug/page_backdoor.dart';
 
 class HostsDrawer extends StatelessWidget {
   const HostsDrawer({

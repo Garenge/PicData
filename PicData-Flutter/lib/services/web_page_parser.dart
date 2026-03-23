@@ -1,7 +1,7 @@
 import 'package:html/parser.dart' as html_parser;
 
-import '../models/pic_net_models.dart';
-import '../models/pic_content.dart';
+import 'package:pic_data/models/pic_net_models.dart';
+import 'package:pic_data/models/pic_content.dart';
 
 /// 网页内容解析工具类。
 ///

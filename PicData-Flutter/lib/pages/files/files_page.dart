@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../services/download_file_service.dart';
+import 'package:pic_data/services/download_file_service.dart';
 import 'file_browser_page.dart';
 
 class FilesPage extends StatefulWidget {

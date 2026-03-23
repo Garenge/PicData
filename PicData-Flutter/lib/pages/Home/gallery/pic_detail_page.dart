@@ -1,12 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../../../models/pic_content.dart';
-import '../../../models/pic_net_models.dart';
-import '../../../services/net_client.dart';
-import '../../../services/web_page_parser.dart';
+import 'package:pic_data/models/pic_content.dart';
+import 'package:pic_data/models/pic_net_models.dart';
+import 'package:pic_data/services/net_client.dart';
+import 'package:pic_data/services/web_page_parser.dart';
 import 'pic_content_grid.dart';
-import '../../../debug/page_backdoor.dart';
+import 'package:pic_data/debug/page_backdoor.dart';
 
 /// 套图详情页。
 ///

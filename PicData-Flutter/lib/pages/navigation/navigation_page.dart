@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../Home/home_page.dart';
-import '../main_tab/tab_root_navigator.dart';
+import 'package:pic_data/pages/Home/home_page.dart';
+import 'package:pic_data/pages/main_tab/tab_root_navigator.dart';
 
 class NavigationPage extends StatelessWidget {
   const NavigationPage({super.key});

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../downloads/downloads_page.dart';
-import '../files/files_page.dart';
-import '../navigation/navigation_page.dart';
-import '../settings/settings_page.dart';
+import 'package:pic_data/pages/downloads/downloads_page.dart';
+import 'package:pic_data/pages/files/files_page.dart';
+import 'package:pic_data/pages/navigation/navigation_page.dart';
+import 'package:pic_data/pages/settings/settings_page.dart';
 import 'tab_root_navigator.dart';
 
 class MainTabPage extends StatefulWidget {

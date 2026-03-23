@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../debug/page_backdoor.dart';
-import '../../services/download_file_service.dart';
+import 'package:pic_data/debug/page_backdoor.dart';
+import 'package:pic_data/services/download_file_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
