@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'package:pic_data/debug/page_backdoor.dart';
+import 'package:pic_data/services/open_local_folder.dart';
 
 class FileBrowserPage extends StatefulWidget {
   const FileBrowserPage({
@@ -105,9 +106,6 @@ class FileBrowserPageState extends State<FileBrowserPage> {
     );
   }
 
-  bool get _supportsOpenLocalFolder =>
-      Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-
   Future<void> _showShareDialog() async {
     await showDialog<void>(
       context: context,
@@ -134,28 +132,7 @@ class FileBrowserPageState extends State<FileBrowserPage> {
   }
 
   Future<void> _openCurrentFolderInSystem() async {
-    if (!_supportsOpenLocalFolder) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('当前设备不支持直接打开本地文件夹')));
-      return;
-    }
-
-    try {
-      if (Platform.isMacOS) {
-        await Process.start('open', [widget.directoryPath]);
-      } else if (Platform.isWindows) {
-        await Process.start('explorer', [widget.directoryPath]);
-      } else if (Platform.isLinux) {
-        await Process.start('xdg-open', [widget.directoryPath]);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('打开文件夹失败: $e')));
-    }
+    await openLocalFolderInSystem(context, widget.directoryPath);
   }
 
   @override
