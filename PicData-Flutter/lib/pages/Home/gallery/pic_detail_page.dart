@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 
 import 'package:pic_data/models/pic_content.dart';
 import 'package:pic_data/models/pic_net_models.dart';
-import 'package:pic_data/services/net_client.dart';
-import 'package:pic_data/services/web_page_parser.dart';
+import 'package:pic_data/services/pic_detail_page_loader.dart';
+import 'package:pic_data/services/pic_download_module.dart';
 import 'pic_content_grid.dart';
 import 'package:pic_data/debug/page_backdoor.dart';
 
@@ -24,6 +24,7 @@ class PicDetailPage extends StatefulWidget {
 
 class _PicDetailPageState extends State<PicDetailPage> {
   final ScrollController _scrollController = ScrollController();
+  final PicDetailPageLoader _detailLoader = PicDetailPageLoader();
   late String _currentHref;
   late List<String> _hrefHistory;
 
@@ -40,7 +41,10 @@ class _PicDetailPageState extends State<PicDetailPage> {
     super.initState();
     _currentHref = widget.content.href;
     _hrefHistory = <String>[_currentHref];
-    _imageHeaders = _buildImageHeaders(_currentHref);
+    _imageHeaders = PicDetailPageLoader.buildDetailRequestHeaders(
+      detailUrl: _currentHref,
+      host: widget.host,
+    );
     _loadDetailForHref(_currentHref);
   }
 
@@ -81,22 +85,35 @@ class _PicDetailPageState extends State<PicDetailPage> {
           heroTag: 'pic-detail-to-top',
           onPressed: _scrollToTop,
           tooltip: '回到顶部',
-          child: const Icon(Icons.vertical_align_top),
+          child: const Icon(Icons.arrow_upward),
         ),
         const SizedBox(height: 12),
         FloatingActionButton.small(
           heroTag: 'pic-detail-to-bottom',
           onPressed: _scrollToBottom,
           tooltip: '跳到底部',
-          child: const Icon(Icons.vertical_align_bottom),
+          child: const Icon(Icons.arrow_downward),
         ),
       ],
     );
   }
 
+  void _onTapDownloadSet() {
+    PicDownloadModule.instance.enqueueDownloadSet(
+      content: widget.content,
+      host: widget.host,
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('已加入下载队列，后台解析并保存到下载目录')),
+    );
+  }
+
   Future<bool> _loadDetailForHref(String href) async {
     if (href.isEmpty) return false;
-    final requestHeaders = _buildImageHeaders(href);
+    final requestHeaders = PicDetailPageLoader.buildDetailRequestHeaders(
+      detailUrl: href,
+      host: widget.host,
+    );
 
     setState(() {
       _isLoading = true;
@@ -104,35 +121,20 @@ class _PicDetailPageState extends State<PicDetailPage> {
     });
 
     try {
-      final html = await NetClient.instance.getText(
-        href,
-        headers: requestHeaders,
-      );
-
       print(
         'PicDetailPage: load detail href="$href" '
         'hostTitle="${widget.host?.title}" hostMark="${widget.host?.mark}" '
         'sourceType=${widget.host?.sourceType} hostUrl="${widget.host?.hostUrl}"',
       );
 
-      final parser = const WebPageParser();
-      final images = parser.parseDetailImages(
-        html: html,
+      final loaded = await _detailLoader.loadPage(
+        href: href,
         host: widget.host,
-        detailUrl: href,
       );
 
-      final suggestions = parser.parseDetailSuggestions(
-        html: html,
-        host: widget.host,
-        detailUrl: href,
-      );
-
-      final nextHref = parser.parseDetailNextPageUrl(
-        html: html,
-        host: widget.host,
-        detailUrl: href,
-      );
+      final images = loaded.imageUrls;
+      final suggestions = loaded.suggestions;
+      final nextHref = loaded.nextHref;
 
       print(
         'PicDetailPage: parsed href="$href" '
@@ -190,29 +192,6 @@ class _PicDetailPageState extends State<PicDetailPage> {
       });
       return false;
     }
-  }
-
-  Map<String, String>? _buildImageHeaders(String href) {
-    final headers = <String, String>{};
-
-    // 详情页图片请求的 Referer 更接近 OC 端逻辑：
-    // 使用当前套图页的地址作为 Referer，而不是站点级的 HOST_URL。
-    if (href.isNotEmpty) {
-      headers['referer'] = href;
-    } else {
-      final fallbackReferer = widget.host?.referer;
-      if (fallbackReferer != null && fallbackReferer.isNotEmpty) {
-        headers['referer'] = fallbackReferer;
-      }
-    }
-
-    headers['User-Agent'] =
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_0_1) '
-        'AppleWebKit/537.36 (KHTML, like Gecko) '
-        'Chrome/87.0.4280.66 Safari/537.36';
-
-    if (headers.isEmpty) return null;
-    return headers;
   }
 
   AppBar _buildAppBar(String titleText) {
@@ -283,6 +262,11 @@ class _PicDetailPageState extends State<PicDetailPage> {
                   },
             child: const Text('下一页'),
           ),
+        IconButton(
+          tooltip: '下载整套到本机（队列）',
+          onPressed: _isLoading ? null : _onTapDownloadSet,
+          icon: const Icon(Icons.download_outlined),
+        ),
       ],
     );
   }

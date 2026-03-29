@@ -3,6 +3,12 @@ import 'package:html/parser.dart' as html_parser;
 import 'package:pic_data/models/pic_net_models.dart';
 import 'package:pic_data/models/pic_content.dart';
 
+void _paginationDbg(bool emit, String message) {
+  if (!emit) return;
+  // ignore: avoid_print
+  print(message);
+}
+
 /// 网页内容解析工具类。
 ///
 /// - `extractReadableText`：保留之前的“简单提取纯文本”能力。
@@ -98,25 +104,44 @@ class WebPageParser {
     required String html,
     required PicHost? host,
     String? entryUrl,
+    bool emitPaginationDebugLog = true,
   }) {
     if (html.isEmpty) return null;
 
     final sourceType = host?.sourceType;
     if (sourceType == null) return null;
 
-    print(
-      'WebPageParser: parseNextPageUrl entryUrl="${entryUrl ?? ''}" sourceType=$sourceType',
+    _paginationDbg(
+      emitPaginationDebugLog,
+      'WebPageParser: parseNextPageUrl entryUrl="${entryUrl ?? ''}" '
+      'sourceType=$sourceType',
     );
 
     switch (sourceType) {
       case 3:
-        return _parseSourceType3NextPage(html, host);
+        return _parseSourceType3NextPage(
+          html,
+          host,
+          emitPaginationDebugLog: emitPaginationDebugLog,
+        );
       case 4:
-        return _parseSourceType4NextPage(html, host);
+        return _parseSourceType4NextPage(
+          html,
+          host,
+          emitPaginationDebugLog: emitPaginationDebugLog,
+        );
       case 5:
-        return _parseSourceType5NextPage(html, host);
+        return _parseSourceType5NextPage(
+          html,
+          host,
+          emitPaginationDebugLog: emitPaginationDebugLog,
+        );
       case 10:
-        return _parseSourceType10NextPage(html, host);
+        return _parseSourceType10NextPage(
+          html,
+          host,
+          emitPaginationDebugLog: emitPaginationDebugLog,
+        );
       default:
         return null;
     }
@@ -187,21 +212,30 @@ class WebPageParser {
     required String html,
     required PicHost? host,
     String? detailUrl,
+    bool emitPaginationDebugLog = true,
   }) {
     if (html.isEmpty) return null;
 
     final sourceType = host?.sourceType;
     if (sourceType == null) return null;
 
-    print(
+    _paginationDbg(
+      emitPaginationDebugLog,
       'WebPageParser: parseDetailNextPageUrl detailUrl="${detailUrl ?? ''}" '
       'sourceType=$sourceType hostHostUrl="${host?.hostUrl ?? ''}"',
     );
 
     switch (sourceType) {
       case 3:
-        final next = _parseSourceType3DetailNextPage(html, host);
-        print('WebPageParser: sourceType=3 detail nextHref="${next ?? ''}"');
+        final next = _parseSourceType3DetailNextPage(
+          html,
+          host,
+          emitPaginationDebugLog: emitPaginationDebugLog,
+        );
+        _paginationDbg(
+          emitPaginationDebugLog,
+          'WebPageParser: sourceType=3 detail nextHref="${next ?? ''}"',
+        );
         return next;
       default:
         // 大部分站点可以复用“列表页 next”解析策略。
@@ -209,8 +243,10 @@ class WebPageParser {
           html: html,
           host: host,
           entryUrl: detailUrl,
+          emitPaginationDebugLog: emitPaginationDebugLog,
         );
-        print(
+        _paginationDbg(
+          emitPaginationDebugLog,
           'WebPageParser: sourceType=$sourceType fallback nextHref="${next ?? ''}"',
         );
         return next;
@@ -221,13 +257,18 @@ class WebPageParser {
   ///
   /// notes 中的 OC 规则：详情下一页依据 `<a>` 的文字（如 “Next >”）。
   /// Flutter 端先做保守匹配：在 `.nav-links` 下寻找包含 “Next” 的链接。
-  String? _parseSourceType3DetailNextPage(String html, PicHost? host) {
+  String? _parseSourceType3DetailNextPage(
+    String html,
+    PicHost? host, {
+    bool emitPaginationDebugLog = true,
+  }) {
     final document = html_parser.parse(html);
     final nextContainer = document.querySelector('.nav-links');
     if (nextContainer == null) return null;
 
     final allLinks = nextContainer.querySelectorAll('a');
-    print(
+    _paginationDbg(
+      emitPaginationDebugLog,
       'WebPageParser: sourceType=3 detail next selector ".nav-links" found, '
       'aCount=${allLinks.length}',
     );
@@ -239,7 +280,8 @@ class WebPageParser {
         matched++;
         final href = link.attributes['href']?.trim() ?? '';
         final resolved = _resolveUrl(href, host);
-        print(
+        _paginationDbg(
+          emitPaginationDebugLog,
           'WebPageParser: sourceType=3 detail next match text="$text" '
           'rawHref="$href" resolvedHref="$resolved"',
         );
@@ -247,7 +289,8 @@ class WebPageParser {
       }
     }
 
-    print(
+    _paginationDbg(
+      emitPaginationDebugLog,
       'WebPageParser: sourceType=3 detail next matches=$matched but '
       'all resolved hrefs were empty',
     );
@@ -936,22 +979,33 @@ class WebPageParser {
     return results;
   }
 
-  String? _parseSourceType3NextPage(String html, PicHost? host) {
+  String? _parseSourceType3NextPage(
+    String html,
+    PicHost? host, {
+    bool emitPaginationDebugLog = true,
+  }) {
     final document = html_parser.parse(html);
     final nextContainer = document.querySelector('.nav-next');
     if (nextContainer == null) {
-      print('WebPageParser: sourceType=3 next ".nav-next" not found');
+      _paginationDbg(
+        emitPaginationDebugLog,
+        'WebPageParser: sourceType=3 next ".nav-next" not found',
+      );
       return null;
     }
 
     final links = nextContainer.querySelectorAll('a');
-    print('WebPageParser: sourceType=3 next ".nav-next" aCount=${links.length}');
+    _paginationDbg(
+      emitPaginationDebugLog,
+      'WebPageParser: sourceType=3 next ".nav-next" aCount=${links.length}',
+    );
     for (final link in nextContainer.querySelectorAll('a')) {
       final text = link.text.trim();
       if (text == '→' || text.contains('→')) {
         final href = link.attributes['href']?.trim();
         final resolved = _resolveUrl(href, host);
-        print(
+        _paginationDbg(
+          emitPaginationDebugLog,
           'WebPageParser: sourceType=3 next match text="$text" '
           'rawHref="${href ?? ''}" resolvedHref="$resolved"',
         );
@@ -962,11 +1016,18 @@ class WebPageParser {
     return null;
   }
 
-  String? _parseSourceType4NextPage(String html, PicHost? host) {
+  String? _parseSourceType4NextPage(
+    String html,
+    PicHost? host, {
+    bool emitPaginationDebugLog = true,
+  }) {
     final document = html_parser.parse(html);
     final nextContainer = document.querySelector('.page');
     if (nextContainer == null) {
-      print('WebPageParser: sourceType=4 next ".page" not found');
+      _paginationDbg(
+        emitPaginationDebugLog,
+        'WebPageParser: sourceType=4 next ".page" not found',
+      );
       return null;
     }
 
@@ -975,7 +1036,8 @@ class WebPageParser {
       if (text == '下页') {
         final href = link.attributes['href']?.trim();
         final resolved = _resolveUrl(href, host);
-        print(
+        _paginationDbg(
+          emitPaginationDebugLog,
           'WebPageParser: sourceType=4 next match text="$text" '
           'rawHref="$href" resolvedHref="$resolved"',
         );
@@ -986,11 +1048,18 @@ class WebPageParser {
     return null;
   }
 
-  String? _parseSourceType5NextPage(String html, PicHost? host) {
+  String? _parseSourceType5NextPage(
+    String html,
+    PicHost? host, {
+    bool emitPaginationDebugLog = true,
+  }) {
     final document = html_parser.parse(html);
     final nextContainer = document.querySelector('#pager');
     if (nextContainer == null) {
-      print('WebPageParser: sourceType=5 next "#pager" not found');
+      _paginationDbg(
+        emitPaginationDebugLog,
+        'WebPageParser: sourceType=5 next "#pager" not found',
+      );
       return null;
     }
 
@@ -1000,7 +1069,8 @@ class WebPageParser {
       if (text == nextPageTitle || text.contains(nextPageTitle)) {
         final href = link.attributes['href']?.trim();
         final resolved = _resolveUrl(href, host);
-        print(
+        _paginationDbg(
+          emitPaginationDebugLog,
           'WebPageParser: sourceType=5 next match text="$text" '
           'rawHref="$href" resolvedHref="$resolved"',
         );
@@ -1011,20 +1081,33 @@ class WebPageParser {
     return null;
   }
 
-  String? _parseSourceType10NextPage(String html, PicHost? host) {
+  String? _parseSourceType10NextPage(
+    String html,
+    PicHost? host, {
+    bool emitPaginationDebugLog = true,
+  }) {
     final document = html_parser.parse(html);
     final nextContainer = document.querySelector('.pagination-list');
     if (nextContainer == null) {
-      print('WebPageParser: sourceType=10 next ".pagination-list" not found');
+      _paginationDbg(
+        emitPaginationDebugLog,
+        'WebPageParser: sourceType=10 next ".pagination-list" not found',
+      );
       return null;
     }
 
     final links = nextContainer.querySelectorAll('a');
     if (links.isEmpty) {
-      print('WebPageParser: sourceType=10 next ".pagination-list" a empty');
+      _paginationDbg(
+        emitPaginationDebugLog,
+        'WebPageParser: sourceType=10 next ".pagination-list" a empty',
+      );
       return null;
     }
-    print('WebPageParser: sourceType=10 next aCount=${links.length}');
+    _paginationDbg(
+      emitPaginationDebugLog,
+      'WebPageParser: sourceType=10 next aCount=${links.length}',
+    );
 
     // 先按“当前页标识”找后继链接（和列表分页保持一致的常见实现）。
     //
@@ -1049,7 +1132,8 @@ class WebPageParser {
       final nextLink = links[currentIndex + 1];
       final href = nextLink.attributes['href']?.trim();
       final resolved = _resolveUrl(href, host);
-      print(
+      _paginationDbg(
+        emitPaginationDebugLog,
         'WebPageParser: sourceType=10 next activeIndex=$currentIndex '
         'nextRawHref="$href" resolvedHref="$resolved"',
       );
@@ -1074,7 +1158,8 @@ class WebPageParser {
 
       final href = link.attributes['href']?.trim() ?? '';
       final resolved = _resolveUrl(href, host);
-      print(
+      _paginationDbg(
+        emitPaginationDebugLog,
         'WebPageParser: sourceType=10 next keyword match text="$text" '
         'rawHref="$href" resolvedHref="$resolved"',
       );
