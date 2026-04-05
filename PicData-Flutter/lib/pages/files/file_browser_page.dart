@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'package:pic_data/debug/page_backdoor.dart';
+import 'package:pic_data/pages/files/file_browser_entry_kind.dart';
 import 'package:pic_data/services/open_local_folder.dart';
+import 'package:pic_data/utils/filename_natural_compare.dart';
 
 class FileBrowserPage extends StatefulWidget {
   const FileBrowserPage({
@@ -60,9 +62,9 @@ class FileBrowserPageState extends State<FileBrowserPage> {
         if (aIsDir != bIsDir) {
           return aIsDir ? -1 : 1;
         }
-        final aName = _entityName(a).toLowerCase();
-        final bName = _entityName(b).toLowerCase();
-        return aName.compareTo(bName);
+        final aName = _entityName(a);
+        final bName = _entityName(b);
+        return compareFilenameNatural(aName, bName);
       });
 
       if (!mounted) return;
@@ -104,6 +106,32 @@ class FileBrowserPageState extends State<FileBrowserPage> {
         ),
       ),
     );
+  }
+
+  void _handleEntryTap(FileSystemEntity entry) {
+    if (entry is Directory) {
+      _openDirectory(entry);
+      return;
+    }
+    final kind = classifyFileBrowserEntry(entry);
+    if (kind == FileBrowserEntryKind.image) {
+      // TODO: 接入图片全屏预览（PhotoView / 画廊等）
+      debugPrint(
+        'PicData-Flutter/lib/pages/files/file_browser_page.dart#_handleEntryTap: 图片预览待开发 path=${entry.path}',
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('图片预览功能待开发')),
+      );
+    } else {
+      // document：含常见办公文档与未识别扩展名（与列表图标一致）
+      // TODO: 接入文档预览页面（PDF/WebView 等）
+      debugPrint(
+        'PicData-Flutter/lib/pages/files/file_browser_page.dart#_handleEntryTap: 文档预览待开发 path=${entry.path}',
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('文档预览功能待开发')),
+      );
+    }
   }
 
   Future<void> _showShareDialog() async {
@@ -148,6 +176,13 @@ class FileBrowserPageState extends State<FileBrowserPage> {
         ),
         actions: [
           IconButton(
+            tooltip: '刷新',
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              _loadEntries();
+            },
+          ),
+          IconButton(
             tooltip: '分享',
             icon: const Icon(Icons.share),
             onPressed: _showShareDialog,
@@ -186,7 +221,8 @@ class FileBrowserPageState extends State<FileBrowserPage> {
         final stableWidth = cellWidth < _minItemWidth
             ? _minItemWidth
             : cellWidth;
-        final childAspectRatio = stableWidth / (stableWidth + 44);
+        // 上方近似方形缩略图区 + 下方文件名（两行 + 内边距）
+        final childAspectRatio = stableWidth / (stableWidth + 52);
 
         return RefreshIndicator(
           onRefresh: _loadEntries,
@@ -202,13 +238,13 @@ class FileBrowserPageState extends State<FileBrowserPage> {
             itemCount: _entries.length,
             itemBuilder: (context, index) {
               final entry = _entries[index];
-              final isDir = entry is Directory;
               final name = _entityName(entry);
+              final kind = classifyFileBrowserEntry(entry);
               return _FileGridItem(
                 name: name,
                 path: entry.path,
-                isDirectory: isDir,
-                onTap: isDir ? () => _openDirectory(entry) : null,
+                kind: kind,
+                onTap: () => _handleEntryTap(entry),
               );
             },
           ),
@@ -222,56 +258,99 @@ class _FileGridItem extends StatelessWidget {
   const _FileGridItem({
     required this.name,
     required this.path,
-    required this.isDirectory,
-    this.onTap,
+    required this.kind,
+    required this.onTap,
   });
 
   final String name;
   final String path;
-  final bool isDirectory;
-  final VoidCallback? onTap;
+  final FileBrowserEntryKind kind;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Card(
       elevation: 1.5,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                isDirectory ? Icons.folder : Icons.insert_drive_file,
-                size: 28,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: ColoredBox(
+                color: colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.35,
+                ),
+                child: _FileGridThumbnail(kind: kind, path: path),
               ),
-              const SizedBox(height: 8),
-              Text(
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+              child: Text(
                 name,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                path,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
-              ),
-              const Spacer(),
-              if (isDirectory)
-                const Align(
-                  alignment: Alignment.centerRight,
-                  child: Icon(Icons.chevron_right, size: 18),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
                 ),
-            ],
-          ),
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
+}
+
+class _FileGridThumbnail extends StatelessWidget {
+  const _FileGridThumbnail({
+    required this.kind,
+    required this.path,
+  });
+
+  final FileBrowserEntryKind kind;
+  final String path;
+
+  @override
+  Widget build(BuildContext context) {
+    switch (kind) {
+      case FileBrowserEntryKind.folder:
+        return Center(
+          child: Icon(
+            Icons.folder_rounded,
+            size: 56,
+            color: Colors.amber.shade700,
+          ),
+        );
+      case FileBrowserEntryKind.document:
+        return Center(
+          child: Icon(
+            Icons.description_outlined,
+            size: 56,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        );
+      case FileBrowserEntryKind.image:
+        return Image.file(
+          File(path),
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (context, error, stackTrace) {
+            return Center(
+              child: Icon(
+                Icons.broken_image_outlined,
+                size: 48,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+            );
+          },
+        );
+    }
   }
 }
