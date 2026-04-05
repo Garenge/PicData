@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 
+import 'package:pic_data/services/proxy_settings_service.dart';
+
 /// 控制 [NetClient.getText] 控制台输出粒度（详情页调试用 `full`，批量爬取用 `compact` / `off`）。
 enum NetTextRequestLogMode {
   /// 请求前、响应后各一行（含 headers）。
@@ -18,28 +20,65 @@ enum NetTextRequestLogMode {
 }
 
 /// 简单的网络请求工具类，后续可以统一在这里加超时、通用 Header、重试等逻辑
+///
+/// 代理仅来自 [ProxySettingsService]（设置页持久化）；不在单次请求路径里解析或探测代理，
+/// 设置变更时通过 [attachProxySettingsListener] 重建底层 [HttpClient]。
 class NetClient {
   NetClient._internal() {
     if (kIsWeb) {
-      // Web 环境不支持 dart:io / HttpClient，这里直接使用默认 http.Client。
       _client = http.Client();
     } else {
-      final httpClient = HttpClient();
-      // 在 macOS 上，统一通过本机代理 127.0.0.1:7897 转发请求。
-      // 其他平台暂时直连，后续再按需扩展。
-      httpClient.findProxy = (uri) {
-        if (Platform.isMacOS) {
-          return 'PROXY 127.0.0.1:7897;';
-        }
-        return 'DIRECT';
-      };
-      _client = IOClient(httpClient);
+      _syncDirectiveFromSettings();
+      _client = _createIoClient();
     }
   }
 
   static final NetClient instance = NetClient._internal();
 
-  late final http.Client _client;
+  late http.Client _client;
+
+  /// 与 [ProxySettingsService.httpProxyPacDirective] 同步时的快照，仅用于绑定 `findProxy`。
+  String _proxyDirective = 'DIRECT';
+
+  static bool _proxyListenerAttached = false;
+
+  /// 须在 [ProxySettingsService.load] 之后调用一次。
+  static void attachProxySettingsListener() {
+    if (kIsWeb || _proxyListenerAttached) {
+      return;
+    }
+    _proxyListenerAttached = true;
+    ProxySettingsService.instance.proxyHostNotifier.addListener(
+      instance._onProxySettingsChanged,
+    );
+    ProxySettingsService.instance.proxyPortNotifier.addListener(
+      instance._onProxySettingsChanged,
+    );
+  }
+
+  void _onProxySettingsChanged() {
+    _rebuildIoClient();
+  }
+
+  void _syncDirectiveFromSettings() {
+    _proxyDirective = ProxySettingsService.instance.httpProxyPacDirective;
+  }
+
+  http.Client _createIoClient() {
+    final httpClient = HttpClient();
+    httpClient.findProxy = (_) => _proxyDirective;
+    return IOClient(httpClient);
+  }
+
+  void _rebuildIoClient() {
+    if (kIsWeb) {
+      return;
+    }
+    _syncDirectiveFromSettings();
+    final http.Client old = _client;
+    _client = _createIoClient();
+    old.close();
+  }
 
   Future<String> getText(
     String url, {
@@ -169,4 +208,3 @@ class HttpException implements Exception {
     return 'HttpException: $message, uri: $uri';
   }
 }
-

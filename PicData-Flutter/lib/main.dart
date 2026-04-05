@@ -3,7 +3,9 @@ import 'debug/dev_overlay.dart';
 
 import 'pages/main_tab/main_tab_page.dart';
 import 'services/download_file_service.dart';
+import 'services/net_client.dart';
 import 'services/pic_net_service.dart';
+import 'services/proxy_settings_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -26,6 +28,8 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _init() async {
+    await ProxySettingsService.instance.load();
+    NetClient.attachProxySettingsListener();
     await PicNetService.instance.load();
     await DownloadFileService.instance.init();
     setState(() {
