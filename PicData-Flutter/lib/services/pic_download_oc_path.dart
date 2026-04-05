@@ -31,19 +31,109 @@ String _hostDisplayName(PicHost? host) {
   if (host == null) {
     return 'unknown_source';
   }
-  final t = host.title.trim();
-  if (t.isNotEmpty) {
-    return t;
-  }
   final m = host.mark?.trim() ?? '';
   if (m.isNotEmpty) {
     return m;
   }
-  final u = host.hostUrl?.trim() ?? '';
-  if (u.isNotEmpty) {
-    return u;
+  final fromTitle = _hostFolderNameDerivedFromTitle(host.title);
+  if (fromTitle != null && fromTitle.isNotEmpty) {
+    return fromTitle;
+  }
+  final fromUrl = _hostFolderNameDerivedFromTitle(host.hostUrl ?? '');
+  if (fromUrl != null && fromUrl.isNotEmpty) {
+    return fromUrl;
   }
   return 'unknown_source';
+}
+
+/// `mark` 为空时：从标题/URL 抽出「站点名」作目录段——去掉协议、路径、`www.`，
+/// 再按标签取核心名；非 URL 标题则将 `.` 换成 `_`。
+String? _hostFolderNameDerivedFromTitle(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) {
+    return null;
+  }
+
+  final uri = _tryParseLooseHttpUrl(trimmed);
+  if (uri != null && uri.host.isNotEmpty) {
+    final core = _coreSiteLabelFromHost(uri.host);
+    if (core.isNotEmpty) {
+      return core.replaceAll('.', '_');
+    }
+  }
+
+  final plain = _plainTitleAsFolderSegment(trimmed);
+  if (plain.isEmpty) {
+    return null;
+  }
+  return plain;
+}
+
+/// 识别 `http(s)://...` 或无协议但形如 `host/path` 的字符串。
+Uri? _tryParseLooseHttpUrl(String s) {
+  var u = Uri.tryParse(s);
+  if (u != null && u.hasScheme && u.host.isNotEmpty) {
+    return u;
+  }
+  if (s.contains('://')) {
+    return null;
+  }
+  if (!s.contains(' ') && s.contains('.')) {
+    u = Uri.tryParse('https://$s');
+    if (u != null && u.host.isNotEmpty) {
+      return u;
+    }
+  }
+  return null;
+}
+
+/// 从 hostname 取出「站点主名」：去掉 `www.`，再按二级/复合 TLD 取标签。
+String _coreSiteLabelFromHost(String host) {
+  var h = host.toLowerCase().trim();
+  if (h.startsWith('www.')) {
+    h = h.substring(4);
+  }
+  final parts = h.split('.').where((p) => p.isNotEmpty).toList();
+  if (parts.isEmpty) {
+    return '';
+  }
+  if (parts.length == 1) {
+    return parts[0];
+  }
+  if (parts.length == 2) {
+    return parts[0];
+  }
+
+  final join2 = '${parts[parts.length - 2]}.${parts[parts.length - 1]}';
+  if (_compoundTlds.contains(join2) && parts.length >= 3) {
+    return parts[parts.length - 3];
+  }
+
+  return parts[parts.length - 2];
+}
+
+/// 常见复合顶级域（无 PSL 时的近似处理）。
+const Set<String> _compoundTlds = {
+  'co.uk',
+  'co.jp',
+  'co.nz',
+  'co.kr',
+  'com.au',
+  'com.br',
+  'com.cn',
+  'com.hk',
+  'com.sg',
+  'com.tw',
+  'net.cn',
+  'org.uk',
+  'ac.uk',
+  'gov.uk',
+};
+
+String _plainTitleAsFolderSegment(String s) {
+  var t = s.replaceAll('.', '_');
+  t = t.replaceAll(RegExp(r'_+'), '_');
+  return t.trim();
 }
 
 String _ocSetFolderSegment(PicContent content) {
@@ -103,4 +193,27 @@ String ocImageFileNameFromImageUrl(String urlString) {
   }
 
   return name;
+}
+
+/// 按详情解析顺序保存时的本地文件名：`1.jpg`、`2.webp`…
+///
+/// 扩展名尽量与 [urlString] 路径最后一段一致；无法识别时用 `.jpg`。
+String ocSequentialImageFileName(int sequence1Based, String urlString) {
+  if (sequence1Based < 1) {
+    throw ArgumentError.value(
+      sequence1Based,
+      'sequence1Based',
+      'must be >= 1',
+    );
+  }
+  final baseName = ocImageFileNameFromImageUrl(urlString);
+  final dot = baseName.lastIndexOf('.');
+  var ext = '.jpg';
+  if (dot > 0 && dot < baseName.length - 1) {
+    final raw = baseName.substring(dot).toLowerCase();
+    if (raw.length <= 10 && RegExp(r'^\.[a-z0-9]+$').hasMatch(raw)) {
+      ext = raw;
+    }
+  }
+  return '$sequence1Based$ext';
 }

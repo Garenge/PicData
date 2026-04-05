@@ -98,15 +98,17 @@ class _PicDetailPageState extends State<PicDetailPage> {
     );
   }
 
-  void _onTapDownloadSet() {
+  void _enqueueDownloadSet(PicContent content) {
     PicDownloadModule.instance.enqueueDownloadSet(
-      content: widget.content,
+      content: content,
       host: widget.host,
     );
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('已加入下载队列，后台解析并保存到下载目录')),
     );
   }
+
+  void _onTapDownloadSet() => _enqueueDownloadSet(widget.content);
 
   Future<bool> _loadDetailForHref(String href) async {
     if (href.isEmpty) return false;
@@ -368,7 +370,7 @@ class _PicDetailPageState extends State<PicDetailPage> {
                               itemWidth: 140,
                               padding: EdgeInsets.zero,
                               enableHover: false,
-                              showDownloadButton: false,
+                              onDownloadTap: _enqueueDownloadSet,
                               onItemTap: (item) {
                                 // ignore: avoid_print
                                 print(

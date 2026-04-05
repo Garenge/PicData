@@ -4,6 +4,7 @@ import 'package:pic_data/models/home_entry.dart';
 import 'package:pic_data/models/pic_net_models.dart';
 import 'package:pic_data/models/pic_content.dart';
 import 'package:pic_data/services/net_client.dart';
+import 'package:pic_data/services/pic_download_module.dart';
 import 'package:pic_data/services/web_page_parser.dart';
 import 'package:pic_data/debug/page_backdoor.dart';
 import 'pic_detail_page.dart';
@@ -453,8 +454,17 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
                           constraints: const BoxConstraints(),
                           icon: const Icon(Icons.download_outlined),
                           onPressed: () {
-                            // ignore: avoid_print
-                            print('已将「${item.title}」加入下载列表');
+                            PicDownloadModule.instance.enqueueDownloadSet(
+                              content: item,
+                              host: widget.host,
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  '已加入下载队列，后台解析并保存到下载目录',
+                                ),
+                              ),
+                            );
                             if (!_isDownloaded) {
                               setState(() {
                                 _isDownloaded = true;
