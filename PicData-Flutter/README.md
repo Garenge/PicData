@@ -38,16 +38,7 @@
 
 > 下载主体流程已可用；本节选为待补充的产品与工程细节。
 
-### 4. 文件浏览器（`FileBrowserPage`）
-
-**已完成**
-
-- 条目类型：文件夹 / 图片 / 文档（扩展名粗分，未识别扩展名按文档展示）；`classifyFileBrowserEntry` 见 `lib/pages/files/file_browser_entry_kind.dart`。
-- 列表 UI：上方缩略图（夹系统图标；图片直读本地文件）、下方文件名；自然排序文件名（`lib/utils/filename_natural_compare.dart`，避免 `10` 排在 `2` 前）。
-- 上下文菜单：桌面 **右键**、触控 **长按**，当前菜单项「删除」+ 二次确认；删除成功后 **仅从内存列表移除该项**（不整页 `_loadEntries` loading）。
-- 列表底部 **额外 padding**（安全区 + 预留高度），减轻 SnackBar 等挡住最后一排文件名。
-
-**待补充（代码内仍有 TODO）**
+### 4. 文件浏览器（`FileBrowserPage`，TODO）
 
 - **图片**：点击进全屏/画廊预览（当前 SnackBar 占位）。
 - **文档**：文档预览页（PDF/WebView 等，当前 SnackBar 占位）。
