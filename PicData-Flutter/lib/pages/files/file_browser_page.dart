@@ -57,7 +57,10 @@ class FileBrowserPageState extends State<FileBrowserPage> {
         await dir.create(recursive: true);
       }
 
-      final entries = await dir.list().toList();
+      final entries = (await dir.list().toList()).where((e) {
+        final base = _entityName(e);
+        return base.isEmpty || !base.startsWith('.');
+      }).toList();
       entries.sort((a, b) {
         final aIsDir = a is Directory;
         final bIsDir = b is Directory;
