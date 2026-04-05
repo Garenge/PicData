@@ -29,6 +29,8 @@ class FileBrowserPageState extends State<FileBrowserPage> {
   static const double _targetItemWidth = 180;
   static const double _minItemWidth = 160;
   static const int _maxColumns = 6;
+  /// 滚到底时多留一截，避免底部 SnackBar 等盖住最后一排 cell 的文件名。
+  static const double _scrollBottomComfortGap = 96;
 
   @override
   void initState() {
@@ -87,6 +89,18 @@ class FileBrowserPageState extends State<FileBrowserPage> {
 
   Future<void> refreshEntries() async {
     await _loadEntries();
+  }
+
+  /// 删除成功后从内存列表拿掉该项，避免再走 `_loadEntries` 的全屏 loading + 重复读盘。
+  /// 与 iOS `deleteRows` 同属「局部更新」；若要动画可再换 `AnimatedList` / 自定义 grid 过渡。
+  void _removeEntryFromList(FileSystemEntity removed) {
+    if (!mounted) {
+      return;
+    }
+    final path = removed.path;
+    setState(() {
+      _entries.removeWhere((e) => e.path == path);
+    });
   }
 
   String _entityName(FileSystemEntity entity) {
@@ -163,6 +177,106 @@ class FileBrowserPageState extends State<FileBrowserPage> {
     await openLocalFolderInSystem(context, widget.directoryPath);
   }
 
+  Future<void> _showEntryContextMenu(
+    FileSystemEntity entry,
+    Offset globalPosition,
+  ) async {
+    final overlayState = Navigator.of(context).overlay;
+    if (overlayState == null) {
+      return;
+    }
+    final overlay = overlayState.context.findRenderObject()! as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromLTWH(globalPosition.dx, globalPosition.dy, 0, 0),
+      Offset.zero & overlay.size,
+    );
+    final chosen = await showMenu<String>(
+      context: context,
+      position: position,
+      items: const [
+        PopupMenuItem<String>(
+          value: 'delete',
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.delete_outline),
+            title: Text('删除'),
+          ),
+        ),
+      ],
+    );
+    if (!mounted) {
+      return;
+    }
+    if (chosen == 'delete') {
+      await _confirmDeleteEntry(entry);
+    }
+  }
+
+  Future<void> _confirmDeleteEntry(FileSystemEntity entry) async {
+    final name = _entityName(entry);
+    final isDir = entry is Directory;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除确认'),
+        content: Text(
+          isDir ? '确定删除文件夹「$name」及其中的全部内容吗？' : '确定删除文件「$name」吗？',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted) {
+      await _deleteEntry(entry);
+    }
+  }
+
+  Future<void> _deleteEntry(FileSystemEntity entry) async {
+    // TODO: 删除本地条目后，同步清理关联的下载记录（数据库 / PicDownload 模块等），避免残留记录
+    final label = _entityName(entry);
+    try {
+      if (entry is Directory) {
+        await entry.delete(recursive: true);
+      } else if (entry is File) {
+        await entry.delete();
+      } else {
+        await entry.delete();
+      }
+      if (!mounted) {
+        return;
+      }
+      _removeEntryFromList(entry);
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已删除：$label')));
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      debugPrint(
+        'PicData-Flutter/lib/pages/files/file_browser_page.dart#_deleteEntry: failed path=${entry.path} error=$e',
+      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('删除失败：$e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -223,12 +337,21 @@ class FileBrowserPageState extends State<FileBrowserPage> {
             : cellWidth;
         // 上方近似方形缩略图区 + 下方文件名（两行 + 内边距）
         final childAspectRatio = stableWidth / (stableWidth + 52);
+        final bottomPadding =
+            12 +
+            MediaQuery.paddingOf(context).bottom +
+            _scrollBottomComfortGap;
 
         return RefreshIndicator(
           onRefresh: _loadEntries,
           child: GridView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(sidePadding, 12, sidePadding, 12),
+            padding: EdgeInsets.fromLTRB(
+              sidePadding,
+              12,
+              sidePadding,
+              bottomPadding,
+            ),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: columns,
               crossAxisSpacing: _gridSpacing,
@@ -241,10 +364,13 @@ class FileBrowserPageState extends State<FileBrowserPage> {
               final name = _entityName(entry);
               final kind = classifyFileBrowserEntry(entry);
               return _FileGridItem(
+                key: ValueKey<String>(entry.path),
                 name: name,
                 path: entry.path,
                 kind: kind,
                 onTap: () => _handleEntryTap(entry),
+                onOpenContextMenu: (globalPosition) =>
+                    _showEntryContextMenu(entry, globalPosition),
               );
             },
           ),
@@ -256,16 +382,27 @@ class FileBrowserPageState extends State<FileBrowserPage> {
 
 class _FileGridItem extends StatelessWidget {
   const _FileGridItem({
+    super.key,
     required this.name,
     required this.path,
     required this.kind,
     required this.onTap,
+    required this.onOpenContextMenu,
   });
 
   final String name;
   final String path;
   final FileBrowserEntryKind kind;
   final VoidCallback onTap;
+  final void Function(Offset globalPosition) onOpenContextMenu;
+
+  static Offset _cellCenterGlobal(BuildContext context) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) {
+      return Offset.zero;
+    }
+    return box.localToGlobal(box.size.center(Offset.zero));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -274,33 +411,38 @@ class _FileGridItem extends StatelessWidget {
       elevation: 1.5,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: ColoredBox(
-                color: colorScheme.surfaceContainerHighest.withValues(
-                  alpha: 0.35,
-                ),
-                child: _FileGridThumbnail(kind: kind, path: path),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
-              child: Text(
-                name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+      child: GestureDetector(
+        onSecondaryTapUp: (details) =>
+            onOpenContextMenu(details.globalPosition),
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: () => onOpenContextMenu(_cellCenterGlobal(context)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: ColoredBox(
+                  color: colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.35,
+                  ),
+                  child: _FileGridThumbnail(kind: kind, path: path),
                 ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+                child: Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
