@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:pic_data/models/home_entry.dart';
 import 'package:pic_data/models/pic_net_models.dart';
@@ -9,6 +11,71 @@ import 'package:pic_data/utils/gallery_list_image_headers.dart';
 import 'package:pic_data/widgets/gallery_list_thumbnail.dart';
 import 'package:pic_data/debug/page_backdoor.dart';
 import 'pic_detail_page.dart';
+
+OverlayEntry? _activeHudEntry;
+Timer? _activeHudTimer;
+
+/// 居中 HUD 提示：短时显示，不占底部按钮区域。
+void _showCenterHud(BuildContext context, String message) {
+  _activeHudTimer?.cancel();
+  _activeHudTimer = null;
+  _activeHudEntry?.remove();
+  _activeHudEntry = null;
+
+  final OverlayState? overlay = Overlay.maybeOf(context, rootOverlay: true);
+  if (overlay == null) {
+    return;
+  }
+  final double maxWidth = MediaQuery.sizeOf(context).width * 0.5;
+
+  late final OverlayEntry entry;
+  entry = OverlayEntry(
+    builder: (BuildContext context) {
+      return Positioned.fill(
+        child: IgnorePointer(
+          ignoring: true,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              child: Material(
+                color: Colors.transparent,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.78),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    child: Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      softWrap: true,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        height: 1.25,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+  _activeHudEntry = entry;
+  overlay.insert(entry);
+  _activeHudTimer = Timer(const Duration(milliseconds: 1600), () {
+    _activeHudTimer = null;
+    _activeHudEntry?.remove();
+    _activeHudEntry = null;
+  });
+}
 
 /// 某个标签 / 入口对应的图集列表页面。
 ///
@@ -442,12 +509,9 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
                               content: item,
                               host: widget.host,
                             );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  '已加入下载队列，后台解析并保存到下载目录',
-                                ),
-                              ),
+                            _showCenterHud(
+                              context,
+                              '已加入下载队列，后台解析并保存到下载目录',
                             );
                             if (!_isDownloaded) {
                               setState(() {
