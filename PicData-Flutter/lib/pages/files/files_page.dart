@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:pic_data/services/download_file_service.dart';
 import 'file_browser_page.dart';
+import 'files_tab_refresh_scope.dart';
 
 class FilesPage extends StatefulWidget {
   const FilesPage({super.key, required this.refreshSignal});
@@ -67,8 +68,13 @@ class _FilesPageState extends State<FilesPage> {
   Future<void> _refreshCurrentDirectory() async {
     if (_rootPath.isEmpty) {
       await _initializeRootPath();
+      return;
+    }
+    final FilesTabRefreshScopeState? scope =
+        FilesTabRefreshScope.maybeOf(context);
+    if (scope != null) {
+      await scope.refreshTop();
     } else {
-      _popFileNavigatorToRoot();
       await _browserPageKey.currentState?.refreshEntries();
     }
   }

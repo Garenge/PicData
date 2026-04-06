@@ -331,10 +331,7 @@ Future<void> _showDownloadRecordContextMenu(
   Offset globalPosition,
   PicSetDownloadRecord record,
 ) async {
-  final overlayState = Overlay.of(context);
-  if (overlayState == null) {
-    return;
-  }
+  final OverlayState overlayState = Overlay.of(context);
   final RenderBox overlay =
       overlayState.context.findRenderObject()! as RenderBox;
   final RelativeRect position = RelativeRect.fromRect(
@@ -346,21 +343,49 @@ Future<void> _showDownloadRecordContextMenu(
     position: position,
     items: const <PopupMenuEntry<String>>[
       PopupMenuItem<String>(
-        value: 'delete',
-        child: Text('删除记录'),
+        value: 'delete_record',
+        child: Text('删除记录（保留文件）'),
+      ),
+      PopupMenuItem<String>(
+        value: 'delete_record_and_files',
+        child: Text('删除记录和本地文件'),
       ),
     ],
   );
-  if (!context.mounted || action != 'delete') {
+  if (!context.mounted) {
     return;
   }
+  if (action == 'delete_record') {
+    await _confirmRemoveDownloadRecord(
+      context,
+      record,
+      deleteLocalFiles: false,
+    );
+    return;
+  }
+  if (action == 'delete_record_and_files') {
+    await _confirmRemoveDownloadRecord(
+      context,
+      record,
+      deleteLocalFiles: true,
+    );
+  }
+}
+
+Future<void> _confirmRemoveDownloadRecord(
+  BuildContext context,
+  PicSetDownloadRecord record, {
+  required bool deleteLocalFiles,
+}) async {
   final bool? ok = await showDialog<bool>(
     context: context,
     builder: (BuildContext ctx) {
       return AlertDialog(
-        title: const Text('删除下载记录'),
+        title: Text(deleteLocalFiles ? '删除记录与文件' : '删除下载记录'),
         content: Text(
-          '确定删除「${record.title}」的记录？不会删除已下载到本机的文件夹与图片。',
+          deleteLocalFiles
+              ? '确定删除「${record.title}」的记录，并永久删除本机该套图目录下的全部已下载文件？此操作不可恢复。'
+              : '确定删除「${record.title}」的下载记录？本机已下载的文件夹与图片将保留。',
         ),
         actions: <Widget>[
           TextButton(
@@ -369,7 +394,7 @@ Future<void> _showDownloadRecordContextMenu(
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
+            child: Text(deleteLocalFiles ? '删除全部' : '删除记录'),
           ),
         ],
       );
@@ -379,11 +404,14 @@ Future<void> _showDownloadRecordContextMenu(
     return;
   }
   try {
-    await PicSetDownloadRecordStore.instance.removeRecord(record.id);
+    await PicSetDownloadRecordStore.instance.removeRecord(
+      record.id,
+      deleteLocalFiles: deleteLocalFiles,
+    );
   } catch (e, st) {
     // ignore: avoid_print
     print(
-      'PicData-Flutter/lib/pages/downloads/downloads_page.dart#_showDownloadRecordContextMenu: '
+      'PicData-Flutter/lib/pages/downloads/downloads_page.dart#_confirmRemoveDownloadRecord: '
       'removeRecord failed: $e',
     );
     // ignore: avoid_print

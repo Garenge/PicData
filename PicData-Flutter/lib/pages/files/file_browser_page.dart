@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:pic_data/debug/page_backdoor.dart';
 import 'package:pic_data/pages/files/file_browser_entry_kind.dart';
+import 'package:pic_data/pages/files/files_tab_refresh_scope.dart';
 import 'package:pic_data/services/open_local_folder.dart';
 import 'package:pic_data/utils/filename_natural_compare.dart';
 
@@ -25,6 +26,7 @@ class FileBrowserPageState extends State<FileBrowserPage> {
   bool _loading = true;
   String? _errorMessage;
   List<FileSystemEntity> _entries = <FileSystemEntity>[];
+  FilesTabRefreshScopeState? _filesTabRefreshHost;
   static const double _gridSpacing = 12;
   static const double _targetItemWidth = 180;
   static const double _minItemWidth = 160;
@@ -44,6 +46,26 @@ class FileBrowserPageState extends State<FileBrowserPage> {
     if (oldWidget.directoryPath != widget.directoryPath) {
       _loadEntries();
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final FilesTabRefreshScopeState? host =
+        FilesTabRefreshScope.maybeOf(context);
+    if (host != _filesTabRefreshHost) {
+      _filesTabRefreshHost?.unregisterRefresh(_onFilesTabExternalRefresh);
+      _filesTabRefreshHost = host;
+      _filesTabRefreshHost?.registerRefresh(_onFilesTabExternalRefresh);
+    }
+  }
+
+  Future<void> _onFilesTabExternalRefresh() => refreshEntries();
+
+  @override
+  void dispose() {
+    _filesTabRefreshHost?.unregisterRefresh(_onFilesTabExternalRefresh);
+    super.dispose();
   }
 
   Future<void> _loadEntries() async {

@@ -60,11 +60,38 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
     return null;
   }
 
-  /// 从列表与 SQLite 中移除一条记录（不删除本地已下载文件）。
-  Future<void> removeRecord(String taskId) async {
+  /// 从列表与 SQLite 中移除一条记录。
+  ///
+  /// [deleteLocalFiles] 为 `true` 时，同时删除 [PicSetDownloadRecord.localDirRelativeToApplicationDocuments]
+  /// 对应的套图目录（递归）；默认仅删库与内存，保留本机已下载文件。
+  Future<void> removeRecord(
+    String taskId, {
+    bool deleteLocalFiles = false,
+  }) async {
     final int i = _records.indexWhere((PicSetDownloadRecord r) => r.id == taskId);
     if (i < 0) {
       return;
+    }
+    final PicSetDownloadRecord rec = _records[i];
+    if (deleteLocalFiles) {
+      try {
+        final String abs = await DownloadFileService.instance
+            .absolutePathFromApplicationDocumentsRelative(
+          rec.localDirRelativeToApplicationDocuments,
+        );
+        final Directory dir = Directory(abs);
+        if (await dir.exists()) {
+          await dir.delete(recursive: true);
+        }
+      } catch (e, st) {
+        // ignore: avoid_print
+        print(
+          '$_logStore#removeRecord: deleteLocalFolder failed id=$taskId error=$e',
+        );
+        // ignore: avoid_print
+        print('  stack=$st');
+        rethrow;
+      }
     }
     try {
       await PicDatabase.instance.downloadRecords.deleteById(taskId);
@@ -75,7 +102,10 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
       print('  stack=$st');
       rethrow;
     }
-    _records.removeAt(i);
+    final int j = _records.indexWhere((PicSetDownloadRecord r) => r.id == taskId);
+    if (j >= 0) {
+      _records.removeAt(j);
+    }
     notifyListeners();
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:pic_data/pages/downloads/downloads_page.dart';
 import 'package:pic_data/pages/files/files_page.dart';
+import 'package:pic_data/pages/files/files_tab_refresh_scope.dart';
 import 'package:pic_data/pages/navigation/navigation_page.dart';
 import 'package:pic_data/pages/settings/settings_page.dart';
 import 'tab_root_navigator.dart';
@@ -37,9 +38,11 @@ class _MainTabPageState extends State<MainTabPage> {
         index: _selectedIndex,
         children: <Widget>[
           const NavigationPage(),
-          TabRootNavigator(
-            homeBuilder: (_) =>
-                FilesPage(refreshSignal: _filesRefreshSignal),
+          FilesTabRefreshScope(
+            child: TabRootNavigator(
+              homeBuilder: (_) =>
+                  FilesPage(refreshSignal: _filesRefreshSignal),
+            ),
           ),
           TabRootNavigator(
             homeBuilder: (_) =>
