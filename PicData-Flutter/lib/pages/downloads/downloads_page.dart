@@ -84,16 +84,6 @@ class _DownloadsPageState extends State<DownloadsPage> {
         builder: (BuildContext context, Widget? _) {
           final List<PicSetDownloadRecord> records =
               PicSetDownloadRecordStore.instance.records;
-          if (records.isEmpty) {
-            return Center(
-              child: Text(
-                '暂无下载记录',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            );
-          }
           return LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
               final int crossAxisCount =
@@ -103,6 +93,19 @@ class _DownloadsPageState extends State<DownloadsPage> {
               return ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
+                  if (records.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                      child: Text(
+                        '暂无下载记录',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
+                        ),
+                      ),
+                    ),
                   _DownloadStatusSection(
                     title: '未开始',
                     status: PicSetDownloadTaskStatus.queued,
@@ -213,96 +216,183 @@ class _DownloadRecordCellState extends State<_DownloadRecordCell> {
     final Map<String, String> headers = record.thumbnailHttpHeaders;
     final Widget? progressBar = _downloadRecordProgressBar(context, record);
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      cursor: SystemMouseCursors.click,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOut,
-        transform: _hovered
-            ? (Matrix4.identity()..scaleByDouble(1.02, 1.02, 1.02, 1))
-            : Matrix4.identity(),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: _hovered
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.16),
-                    blurRadius: 18,
-                    spreadRadius: 1,
-                    offset: const Offset(0, 10),
+    return GestureDetector(
+      onSecondaryTapUp: (TapUpDetails details) {
+        _showDownloadRecordContextMenu(
+          context,
+          details.globalPosition,
+          record,
+        );
+      },
+      onLongPress: () {
+        final RenderBox? box = context.findRenderObject() as RenderBox?;
+        if (box == null) {
+          return;
+        }
+        final Offset pos = box.localToGlobal(box.size.center(Offset.zero));
+        _showDownloadRecordContextMenu(context, pos, record);
+      },
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        cursor: SystemMouseCursors.click,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          transform: _hovered
+              ? (Matrix4.identity()..scaleByDouble(1.02, 1.02, 1.02, 1))
+              : Matrix4.identity(),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: _hovered
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.16),
+                      blurRadius: 18,
+                      spreadRadius: 1,
+                      offset: const Offset(0, 10),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 10,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+          ),
+          child: Card(
+            elevation: _hovered ? 8 : 2,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: InkWell(
+              onTap: () => pushFileBrowserForDownloadRecord(context, record),
+              hoverColor: Colors.black.withValues(alpha: 0.02),
+              highlightColor: Colors.transparent,
+              splashColor: Colors.transparent,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: GalleryListThumbnail(
+                      imageUrl: record.thumbnailUrl,
+                      headers: headers,
+                      title: record.title,
+                    ),
                   ),
-                ]
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 10,
-                    spreadRadius: 0,
-                    offset: const Offset(0, 4),
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          record.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _statusDetail(record),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                        ),
+                        if (progressBar != null) ...[
+                          const SizedBox(height: 6),
+                          progressBar,
+                        ],
+                      ],
+                    ),
                   ),
                 ],
-        ),
-        child: Card(
-          elevation: _hovered ? 8 : 2,
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: InkWell(
-            onTap: () => pushFileBrowserForDownloadRecord(context, record),
-            hoverColor: Colors.black.withValues(alpha: 0.02),
-            highlightColor: Colors.transparent,
-            splashColor: Colors.transparent,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: GalleryListThumbnail(
-                    imageUrl: record.thumbnailUrl,
-                    headers: headers,
-                    title: record.title,
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        record.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _statusDetail(record),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
-                        ),
-                      ),
-                      if (progressBar != null) ...[
-                        const SizedBox(height: 6),
-                        progressBar,
-                      ],
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+Future<void> _showDownloadRecordContextMenu(
+  BuildContext context,
+  Offset globalPosition,
+  PicSetDownloadRecord record,
+) async {
+  final overlayState = Overlay.of(context);
+  if (overlayState == null) {
+    return;
+  }
+  final RenderBox overlay =
+      overlayState.context.findRenderObject()! as RenderBox;
+  final RelativeRect position = RelativeRect.fromRect(
+    Rect.fromLTWH(globalPosition.dx, globalPosition.dy, 1, 1),
+    Offset.zero & overlay.size,
+  );
+  final String? action = await showMenu<String>(
+    context: context,
+    position: position,
+    items: const <PopupMenuEntry<String>>[
+      PopupMenuItem<String>(
+        value: 'delete',
+        child: Text('删除记录'),
+      ),
+    ],
+  );
+  if (!context.mounted || action != 'delete') {
+    return;
+  }
+  final bool? ok = await showDialog<bool>(
+    context: context,
+    builder: (BuildContext ctx) {
+      return AlertDialog(
+        title: const Text('删除下载记录'),
+        content: Text(
+          '确定删除「${record.title}」的记录？不会删除已下载到本机的文件夹与图片。',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除'),
+          ),
+        ],
+      );
+    },
+  );
+  if (ok != true || !context.mounted) {
+    return;
+  }
+  try {
+    await PicSetDownloadRecordStore.instance.removeRecord(record.id);
+  } catch (e, st) {
+    // ignore: avoid_print
+    print(
+      'PicData-Flutter/lib/pages/downloads/downloads_page.dart#_showDownloadRecordContextMenu: '
+      'removeRecord failed: $e',
+    );
+    // ignore: avoid_print
+    print('  stack=$st');
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('删除失败：$e')),
+      );
+    }
   }
 }
 

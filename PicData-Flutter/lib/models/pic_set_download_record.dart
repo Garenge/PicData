@@ -56,6 +56,24 @@ class PicHostSnapshot {
       mark: mark,
     );
   }
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'title': title,
+        'hostUrl': hostUrl,
+        'mark': mark,
+        'referer': referer,
+        'sourceType': sourceType,
+      };
+
+  factory PicHostSnapshot.fromJson(Map<String, dynamic> json) {
+    return PicHostSnapshot(
+      title: json['title'] as String? ?? '',
+      hostUrl: json['hostUrl'] as String?,
+      mark: json['mark'] as String?,
+      referer: json['referer'] as String?,
+      sourceType: (json['sourceType'] as num?)?.toInt(),
+    );
+  }
 }
 
 /// 解析阶段分母未知；[plannedImageTotal] 仅在 [parseFinished] 之后有值。
@@ -219,6 +237,27 @@ class PicSetDownloadRecord {
       href: contentHref,
       thumbnail: thumbnailUrl,
       isDownloaded: isDownloaded,
+    );
+  }
+
+  /// 进程被杀后冷启动：将非终态任务恢复为「排队」，清空进度与时间戳，保留身份与目录字段。
+  PicSetDownloadRecord resetToQueuedPreservingIdentity() {
+    return PicSetDownloadRecord(
+      id: id,
+      contentHref: contentHref,
+      title: title,
+      thumbnailUrl: thumbnailUrl,
+      entryDetailHref: entryDetailHref,
+      host: host,
+      status: PicSetDownloadTaskStatus.queued,
+      thumbnailHttpHeaders: thumbnailHttpHeaders,
+      progress: const PicSetDownloadProgress(),
+      createdAt: createdAt,
+      parseStartedAt: null,
+      parseFinishedAt: null,
+      completedAt: null,
+      lastErrorMessage: null,
+      localDirRelativeToApplicationDocuments: localDirRelativeToApplicationDocuments,
     );
   }
 }

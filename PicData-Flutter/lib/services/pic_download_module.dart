@@ -40,9 +40,12 @@ class PicDownloadModule {
   int _imageInFlight = 0;
 
   /// 将一整套套图下载排入队列 A（同一 [PicContent.href] 已在排队或执行中会跳过）。
+  ///
+  /// [replaceExistingImageFiles] 为 `true` 时，单图下载前若本地已存在则先删除再拉取；默认 `false` 则跳过已存在文件。
   void enqueueDownloadSet({
     required PicContent content,
     PicHost? host,
+    bool replaceExistingImageFiles = false,
   }) {
     final href = content.href;
     if (href.isEmpty) {
@@ -64,6 +67,7 @@ class PicDownloadModule {
       id: '${DateTime.now().microsecondsSinceEpoch}',
       content: content,
       host: host,
+      replaceExistingImageFiles: replaceExistingImageFiles,
     );
     _setQueue.add(task);
     unawaited(() async {
@@ -237,6 +241,7 @@ class PicDownloadModule {
             imageUrl: pending.url,
             headers: headers,
             targetFile: file,
+            replaceExistingImageFiles: task.replaceExistingImageFiles,
             onFinished: (bool success) {
               PicSetDownloadRecordStore.instance.recordImageJobOutcome(
                 task.id,
@@ -315,14 +320,23 @@ class PicDownloadModule {
     );
     try {
       if (await job.targetFile.exists()) {
-        downloadOk = true;
-        // ignore: avoid_print
-        print(
-          '$_logCtx#_runOneImageDownload: file_end '
-          'set="${job.setTitle}" file="${job.fileName}" seq=${job.sequence} '
-          'status=skipped_exists',
-        );
-        return;
+        if (job.replaceExistingImageFiles) {
+          await job.targetFile.delete();
+          // ignore: avoid_print
+          print(
+            '$_logCtx#_runOneImageDownload: deleted_existing '
+            'set="${job.setTitle}" file="${job.fileName}" seq=${job.sequence}',
+          );
+        } else {
+          downloadOk = true;
+          // ignore: avoid_print
+          print(
+            '$_logCtx#_runOneImageDownload: file_end '
+            'set="${job.setTitle}" file="${job.fileName}" seq=${job.sequence} '
+            'status=skipped_exists',
+          );
+          return;
+        }
       }
       final bytes = await NetClient.instance.getBytes(
         job.imageUrl,
@@ -364,6 +378,7 @@ class _ImageDownloadJob {
     required this.imageUrl,
     required this.headers,
     required this.targetFile,
+    required this.replaceExistingImageFiles,
     required this.onFinished,
   });
 
@@ -375,6 +390,7 @@ class _ImageDownloadJob {
   final String imageUrl;
   final Map<String, String>? headers;
   final File targetFile;
+  final bool replaceExistingImageFiles;
 
   /// [success]：已落盘或本地已存在；`false` 表示下载/写盘失败。
   final void Function(bool success) onFinished;

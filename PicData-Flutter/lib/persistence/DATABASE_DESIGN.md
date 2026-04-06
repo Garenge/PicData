@@ -109,3 +109,4 @@ CREATE INDEX PicSourceModel_index ON PicSourceModel(url);
 | 日期 | 说明 |
 |------|------|
 | 2026-03-21 | 初稿：OC 三表、索引说明、Repository + 节流策略、实现顺序 |
+| 2026-04-06 | Flutter：已落地 `pic_set_download_record` 单表（`PicSetDownloadRecordDao`），冷启动载入并重置非终态；OC 三表其余部分仍待迁移。 |

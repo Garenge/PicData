@@ -2,3 +2,4 @@
 library;
 
 export 'pic_database.dart';
+export 'pic_set_download_record_dao.dart';

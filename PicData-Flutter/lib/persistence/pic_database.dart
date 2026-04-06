@@ -1,36 +1,75 @@
 import 'dart:async';
 
-/// 本地持久化入口。具体存储实现（sqflite / Drift 等）在后续迭代中接入。
-///
-/// 使用方式：在 [WidgetsFlutterBinding.ensureInitialized] 之后、首屏依赖数据之前调用 [init]。
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:pic_data/persistence/pic_set_download_record_dao.dart';
+import 'package:sqflite/sqflite.dart';
+
+const String _logCtx = 'PicData-Flutter/lib/persistence/pic_database.dart';
+
+/// 本地持久化入口：打开 SQLite、版本与 [PicSetDownloadRecordDao]。
 class PicDatabase {
   PicDatabase._();
 
   static final PicDatabase instance = PicDatabase._();
 
-  /// 与 OC 版及未来 migration 对齐时使用；仅作约定，尚未写入真实文件。
+  /// 与 OC 版及未来 migration 对齐时使用。
   static const String fileName = 'pic_data.sqlite';
 
-  /// 逻辑库版本，供迁移脚本递增；实现层落地后与 user_version 对齐。
+  /// 逻辑库版本；表结构变更时递增并在 [openDatabase] 中 migration。
   static const int schemaVersion = 1;
 
   bool _initialized = false;
 
   bool get isInitialized => _initialized;
 
-  /// 打开连接、执行 migration、注册各 Repository 依赖。
-  ///
-  /// 当前为占位：仅占位初始化，避免业务层提前耦合具体 SDK。
+  Database? _db;
+  PicSetDownloadRecordDao? _downloadRecordsDao;
+
+  /// 套图下载记录 DAO；须先 [init]。
+  PicSetDownloadRecordDao get downloadRecords {
+    final Database? d = _db;
+    if (d == null) {
+      throw StateError('PicDatabase not initialized; call init() first');
+    }
+    return _downloadRecordsDao ??= PicSetDownloadRecordDao(d);
+  }
+
+  /// 打开连接、建表。
   Future<void> init() async {
-    if (_initialized) return;
-    // TODO: path_provider 取应用目录，打开 SQLite，执行 CREATE / migration
+    if (_initialized) {
+      return;
+    }
+    final dir = await getApplicationDocumentsDirectory();
+    final String path = p.join(dir.path, fileName);
+    _db = await openDatabase(
+      path,
+      version: schemaVersion,
+      onCreate: (Database db, int version) async {
+        await PicSetDownloadRecordDao.createTableV1(db);
+      },
+    );
     _initialized = true;
   }
 
-  /// 释放连接与缓存；应用退出或热重启前可调用。
+  /// 释放连接；应用退出时可调用。
   Future<void> dispose() async {
-    if (!_initialized) return;
-    // TODO: close database / isolate pool
+    if (!_initialized) {
+      return;
+    }
+    _downloadRecordsDao = null;
+    final Database? d = _db;
+    _db = null;
     _initialized = false;
+    if (d != null) {
+      try {
+        await d.close();
+      } catch (e, st) {
+        // ignore: avoid_print
+        print('$_logCtx#dispose: close failed: $e');
+        // ignore: avoid_print
+        print('  stack=$st');
+      }
+    }
   }
 }

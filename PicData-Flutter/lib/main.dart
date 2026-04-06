@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'debug/dev_overlay.dart';
 
+import 'package:pic_data/persistence/pic_database.dart';
+import 'package:pic_data/services/pic_set_download_record_store.dart';
+
 import 'pages/main_tab/main_tab_page.dart';
 import 'services/download_file_service.dart';
 import 'services/net_client.dart';
@@ -8,6 +11,7 @@ import 'services/pic_net_service.dart';
 import 'services/proxy_settings_service.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -32,6 +36,8 @@ class _MyAppState extends State<MyApp> {
     NetClient.attachProxySettingsListener();
     await PicNetService.instance.load();
     await DownloadFileService.instance.init();
+    await PicDatabase.instance.init();
+    await PicSetDownloadRecordStore.instance.loadFromDatabaseOnStartup();
     setState(() {
       _initialized = true;
     });

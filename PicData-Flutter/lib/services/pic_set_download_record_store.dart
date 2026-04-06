@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
-
 import 'package:pic_data/models/pic_set_download_record.dart';
+import 'package:pic_data/persistence/pic_database.dart';
 import 'package:pic_data/services/download_file_service.dart';
 import 'package:pic_data/services/pic_download_oc_path.dart';
 import 'package:pic_data/services/pic_download_types.dart';
+
+const String _logStore = 'PicData-Flutter/lib/services/pic_set_download_record_store.dart';
 
 /// 套图下载记录的内存仓库；UI 可 `addListener` 或通过上层状态管理订阅。
 class PicSetDownloadRecordStore extends ChangeNotifier {
@@ -15,6 +18,36 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
   static final PicSetDownloadRecordStore instance = PicSetDownloadRecordStore._();
 
   final List<PicSetDownloadRecord> _records = <PicSetDownloadRecord>[];
+
+  /// 冷启动时 [main] 在 [PicDatabase.init] 之后调用：从 SQLite 载入，并将非已完成/失败记录重置为 [PicSetDownloadTaskStatus.queued] 后写回库。
+  Future<void> loadFromDatabaseOnStartup() async {
+    final List<PicSetDownloadRecord> list =
+        await PicDatabase.instance.downloadRecords.queryAllOrderByCreatedDesc();
+    _records.clear();
+    for (final PicSetDownloadRecord r in list) {
+      PicSetDownloadRecord row = r;
+      if (r.status != PicSetDownloadTaskStatus.completed &&
+          r.status != PicSetDownloadTaskStatus.failed) {
+        row = r.resetToQueuedPreservingIdentity();
+        await PicDatabase.instance.downloadRecords.upsert(row);
+      }
+      _records.add(row);
+    }
+    notifyListeners();
+  }
+
+  void _persist(PicSetDownloadRecord r) {
+    unawaited(() async {
+      try {
+        await PicDatabase.instance.downloadRecords.upsert(r);
+      } catch (e, st) {
+        // ignore: avoid_print
+        print('$_logStore#_persist: failed id=${r.id} error=$e');
+        // ignore: avoid_print
+        print('  stack=$st');
+      }
+    }());
+  }
 
   List<PicSetDownloadRecord> get records => List<PicSetDownloadRecord>.unmodifiable(_records);
 
@@ -27,12 +60,32 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
     return null;
   }
 
+  /// 从列表与 SQLite 中移除一条记录（不删除本地已下载文件）。
+  Future<void> removeRecord(String taskId) async {
+    final int i = _records.indexWhere((PicSetDownloadRecord r) => r.id == taskId);
+    if (i < 0) {
+      return;
+    }
+    try {
+      await PicDatabase.instance.downloadRecords.deleteById(taskId);
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('$_logStore#removeRecord: deleteById failed id=$taskId error=$e');
+      // ignore: avoid_print
+      print('  stack=$st');
+      rethrow;
+    }
+    _records.removeAt(i);
+    notifyListeners();
+  }
+
   void _replace(String taskId, PicSetDownloadRecord Function(PicSetDownloadRecord r) fn) {
     final int i = _records.indexWhere((PicSetDownloadRecord r) => r.id == taskId);
     if (i < 0) {
       return;
     }
     _records[i] = fn(_records[i]);
+    _persist(_records[i]);
     notifyListeners();
   }
 
@@ -46,13 +99,12 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
     );
     final String rel = await DownloadFileService.instance
         .relativePathFromApplicationDocumentsToSetFolder(sub);
-    _records.insert(
-      0,
-      PicSetDownloadRecord.initialForEnqueue(
-        task: task,
-        localDirRelativeToApplicationDocuments: rel,
-      ),
+    final PicSetDownloadRecord rec = PicSetDownloadRecord.initialForEnqueue(
+      task: task,
+      localDirRelativeToApplicationDocuments: rel,
     );
+    _records.insert(0, rec);
+    _persist(rec);
     notifyListeners();
   }
 
@@ -165,9 +217,11 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
         }
         final int next = fileCount > planned ? planned : fileCount;
         if (next != prog.imageJobsSucceeded) {
-          _records[i] = record.copyWith(
+          final PicSetDownloadRecord updated = record.copyWith(
             progress: prog.copyWith(imageJobsSucceeded: next),
           );
+          _records[i] = updated;
+          _persist(updated);
         }
       } catch (_) {
         // 忽略单条同步失败，避免打断整表刷新
