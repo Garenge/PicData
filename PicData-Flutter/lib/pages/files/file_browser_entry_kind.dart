@@ -43,6 +43,49 @@ const _documentExtensions = <String>{
   'key',
 };
 
+/// 可在文件浏览器中按 UTF-8（容错）打开纯文本预览的扩展名。
+const _textPreviewExtensions = <String>{
+  'txt',
+  'md',
+  'markdown',
+  'json',
+  'xml',
+  'html',
+  'htm',
+  'xhtml',
+  'csv',
+  'tsv',
+  'log',
+  'yaml',
+  'yml',
+  'ini',
+  'cfg',
+  'conf',
+  'properties',
+  'gitignore',
+  'css',
+  'scss',
+  'less',
+  'js',
+  'jsx',
+  'mjs',
+  'cjs',
+  'ts',
+  'tsx',
+  'dart',
+  'py',
+  'rb',
+  'go',
+  'rs',
+  'java',
+  'kt',
+  'swift',
+  'sh',
+  'bash',
+  'zsh',
+  'env',
+};
+
 String _extensionLower(String path) {
   final i = path.lastIndexOf('.');
   if (i <= 0 || i >= path.length - 1) {
@@ -69,4 +112,10 @@ FileBrowserEntryKind classifyFileBrowserEntry(FileSystemEntity entity) {
     return FileBrowserEntryKind.document;
   }
   return FileBrowserEntryKind.document;
+}
+
+/// 是否适合在应用内做纯文本预览（与 [_textPreviewExtensions] 一致）。
+bool filePathSupportsTextPreview(String path) {
+  final ext = _extensionLower(path);
+  return ext.isNotEmpty && _textPreviewExtensions.contains(ext);
 }

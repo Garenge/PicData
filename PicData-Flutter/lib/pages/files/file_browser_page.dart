@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:pic_data/debug/page_backdoor.dart';
 import 'package:pic_data/pages/files/file_browser_entry_kind.dart';
+import 'package:pic_data/pages/files/text_file_preview_page.dart';
 import 'package:pic_data/pages/files/files_tab_refresh_scope.dart';
 import 'package:pic_data/services/open_local_folder.dart';
 import 'package:pic_data/utils/filename_natural_compare.dart';
@@ -161,14 +162,23 @@ class FileBrowserPageState extends State<FileBrowserPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('图片预览功能待开发')),
       );
+    } else if (entry is File && filePathSupportsTextPreview(entry.path)) {
+      final String name = _entityName(entry);
+      Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (BuildContext context) => TextFilePreviewPage(
+            filePath: entry.path,
+            title: name,
+          ),
+        ),
+      );
     } else {
-      // document：含常见办公文档与未识别扩展名（与列表图标一致）
-      // TODO: 接入文档预览页面（PDF/WebView 等）
+      // document：PDF / Office 等仍为占位
       debugPrint(
-        'PicData-Flutter/lib/pages/files/file_browser_page.dart#_handleEntryTap: 文档预览待开发 path=${entry.path}',
+        'PicData-Flutter/lib/pages/files/file_browser_page.dart#_handleEntryTap: 非文本文档预览待开发 path=${entry.path}',
       );
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('文档预览功能待开发')),
+        const SnackBar(content: Text('该类型文档预览暂未支持')),
       );
     }
   }
