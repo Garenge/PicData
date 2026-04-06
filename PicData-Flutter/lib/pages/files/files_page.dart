@@ -61,7 +61,13 @@ class _FilesPageState extends State<FilesPage> {
   void didUpdateWidget(covariant FilesPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.refreshSignal != oldWidget.refreshSignal) {
-      _refreshCurrentDirectory();
+      // 避免在 build/didUpdateWidget 链路里同步触发子组件 [setState]（见 FileBrowserPage#_loadEntries）。
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) {
+          return;
+        }
+        await _refreshCurrentDirectory();
+      });
     }
   }
 
