@@ -98,6 +98,54 @@ class PicDownloadModule {
     unawaited(_pumpSetQueue());
   }
 
+  /// 冷启动在 [PicSetDownloadRecordStore.loadFromDatabaseOnStartup] 之后调用：把仍为
+  /// [PicSetDownloadTaskStatus.queued] 的记录按 [PicSetDownloadRecord.createdAt] 升序重新推入队列 A
+  /// （不新建库行、不改动 [PicSetDownloadQueueTask.id]）。
+  void resumePersistedQueuedTasksIfAny() {
+    final List<PicSetDownloadRecord> queued = PicSetDownloadRecordStore.instance.records
+        .where((PicSetDownloadRecord r) => r.status == PicSetDownloadTaskStatus.queued)
+        .toList()
+      ..sort(
+        (PicSetDownloadRecord a, PicSetDownloadRecord b) =>
+            a.createdAt.compareTo(b.createdAt),
+      );
+    if (queued.isEmpty) {
+      return;
+    }
+    // ignore: avoid_print
+    print(
+      '$_logCtx#resumePersistedQueuedTasksIfAny: reEnqueue count=${queued.length}',
+    );
+    for (final PicSetDownloadRecord r in queued) {
+      _enqueueRestoredSetTask(r.toResumeQueueTask());
+    }
+  }
+
+  void _enqueueRestoredSetTask(PicSetDownloadQueueTask task) {
+    final String href = task.content.href;
+    if (href.isEmpty) {
+      // ignore: avoid_print
+      print('$_logCtx#_enqueueRestoredSetTask: skip empty href id=${task.id}');
+      return;
+    }
+    if (_setHrefInPipeline.contains(href)) {
+      // ignore: avoid_print
+      print(
+        '$_logCtx#_enqueueRestoredSetTask: skip duplicate href id=${task.id} '
+        'href="$href"',
+      );
+      return;
+    }
+    _setHrefInPipeline.add(href);
+    _setQueue.add(task);
+    // ignore: avoid_print
+    print(
+      '$_logCtx#_enqueueRestoredSetTask: restored id=${task.id} '
+      'title="${task.content.title}" pending=${_setQueue.length}',
+    );
+    unawaited(_pumpSetQueue());
+  }
+
   Future<void> _pumpSetQueue() async {
     if (_setPumpRunning) return;
     _setPumpRunning = true;

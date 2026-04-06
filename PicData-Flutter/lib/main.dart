@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'debug/dev_overlay.dart';
 
 import 'package:pic_data/persistence/pic_database.dart';
+import 'package:pic_data/services/pic_download_module.dart';
 import 'package:pic_data/services/pic_set_download_record_store.dart';
 
 import 'pages/main_tab/main_tab_page.dart';
@@ -38,6 +39,7 @@ class _MyAppState extends State<MyApp> {
     await DownloadFileService.instance.init();
     await PicDatabase.instance.init();
     await PicSetDownloadRecordStore.instance.loadFromDatabaseOnStartup();
+    PicDownloadModule.instance.resumePersistedQueuedTasksIfAny();
     setState(() {
       _initialized = true;
     });

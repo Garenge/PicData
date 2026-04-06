@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:pic_data/models/pic_content.dart';
 import 'package:pic_data/models/pic_net_models.dart';
 import 'package:pic_data/services/pic_download_types.dart';
@@ -237,6 +239,19 @@ class PicSetDownloadRecord {
       href: contentHref,
       thumbnail: thumbnailUrl,
       isDownloaded: isDownloaded,
+    );
+  }
+
+  /// 冷启动恢复：已有库行时构造队列 A 任务，保留 [id] 且不再调用 [PicSetDownloadRecordStore.registerEnqueued]。
+  ///
+  /// [replaceExistingImageFiles] 未持久化，恢复时固定为 `false`（与默认下载一致）。
+  PicSetDownloadQueueTask toResumeQueueTask() {
+    return PicSetDownloadQueueTask(
+      id: id,
+      content: toPicContent(),
+      host: host.toLoosePicHost(),
+      replaceExistingImageFiles: false,
+      recordRegistered: Completer<void>()..complete(),
     );
   }
 
