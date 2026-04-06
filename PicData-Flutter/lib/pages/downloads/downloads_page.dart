@@ -211,6 +211,7 @@ class _DownloadRecordCellState extends State<_DownloadRecordCell> {
   Widget build(BuildContext context) {
     final PicSetDownloadRecord record = widget.record;
     final Map<String, String> headers = record.thumbnailHttpHeaders;
+    final Widget? progressBar = _downloadRecordProgressBar(context, record);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -289,6 +290,10 @@ class _DownloadRecordCellState extends State<_DownloadRecordCell> {
                               .onSurfaceVariant,
                         ),
                       ),
+                      if (progressBar != null) ...[
+                        const SizedBox(height: 6),
+                        progressBar,
+                      ],
                     ],
                   ),
                 ),
@@ -299,6 +304,72 @@ class _DownloadRecordCellState extends State<_DownloadRecordCell> {
       ),
     );
   }
+}
+
+/// 排队/已完成不展示；进行中解析阶段为不确定进度，拉图阶段为确定进度；失败且已知总数时展示冻结进度。
+Widget? _downloadRecordProgressBar(
+  BuildContext context,
+  PicSetDownloadRecord record,
+) {
+  final PicSetDownloadProgress p = record.progress;
+  final ColorScheme cs = Theme.of(context).colorScheme;
+
+  switch (record.status) {
+    case PicSetDownloadTaskStatus.queued:
+    case PicSetDownloadTaskStatus.completed:
+      return null;
+    case PicSetDownloadTaskStatus.failed:
+      final int? total = p.plannedImageTotal;
+      if (!p.parseFinished || total == null || total <= 0) {
+        return null;
+      }
+      final double v = (p.imageJobsFinished / total).clamp(0.0, 1.0);
+      return _downloadLinearBar(
+        context,
+        value: v,
+        color: cs.outline,
+      );
+    case PicSetDownloadTaskStatus.inProgress:
+      if (!p.parseFinished) {
+        return _downloadLinearBar(context, indeterminate: true);
+      }
+      final int total = p.plannedImageTotal ?? 0;
+      if (total <= 0) {
+        return null;
+      }
+      final double v = (p.imageJobsFinished / total).clamp(0.0, 1.0);
+      return _downloadLinearBar(context, value: v);
+  }
+}
+
+Widget _downloadLinearBar(
+  BuildContext context, {
+  bool indeterminate = false,
+  double? value,
+  Color? color,
+}) {
+  final ColorScheme cs = Theme.of(context).colorScheme;
+  final Color track = cs.surfaceContainerHighest.withValues(alpha: 0.55);
+  final Color fill = color ?? cs.primary;
+
+  return ClipRRect(
+    borderRadius: BorderRadius.circular(2),
+    child: SizedBox(
+      height: 3,
+      child: indeterminate
+          ? LinearProgressIndicator(
+              minHeight: 3,
+              backgroundColor: track,
+              color: fill,
+            )
+          : LinearProgressIndicator(
+              value: value,
+              minHeight: 3,
+              backgroundColor: track,
+              color: fill,
+            ),
+    ),
+  );
 }
 
 String _statusDetail(PicSetDownloadRecord record) {
