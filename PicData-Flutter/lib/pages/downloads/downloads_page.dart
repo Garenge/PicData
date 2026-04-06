@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:pic_data/debug/page_backdoor.dart';
 import 'package:pic_data/models/pic_set_download_record.dart';
+import 'package:pic_data/pages/downloads/download_failed_items_page.dart';
 import 'package:pic_data/pages/files/open_download_record_local_folder.dart';
 import 'package:pic_data/services/download_file_service.dart';
 import 'package:pic_data/services/open_local_folder.dart';
@@ -88,8 +89,8 @@ class _DownloadsPageState extends State<DownloadsPage> {
             builder: (BuildContext context, BoxConstraints constraints) {
               final int crossAxisCount =
                   _DownloadsPageState._crossAxisCountForWidth(
-                constraints.maxWidth,
-              );
+                    constraints.maxWidth,
+                  );
               return ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
@@ -100,9 +101,7 @@ class _DownloadsPageState extends State<DownloadsPage> {
                         '暂无下载记录',
                         style: TextStyle(
                           fontSize: 13,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
@@ -155,8 +154,9 @@ class _DownloadStatusSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<PicSetDownloadRecord> filtered =
-        records.where((PicSetDownloadRecord r) => r.status == status).toList();
+    final List<PicSetDownloadRecord> filtered = records
+        .where((PicSetDownloadRecord r) => r.status == status)
+        .toList();
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       clipBehavior: Clip.antiAlias,
@@ -218,11 +218,7 @@ class _DownloadRecordCellState extends State<_DownloadRecordCell> {
 
     return GestureDetector(
       onSecondaryTapUp: (TapUpDetails details) {
-        _showDownloadRecordContextMenu(
-          context,
-          details.globalPosition,
-          record,
-        );
+        _showDownloadRecordContextMenu(context, details.globalPosition, record);
       },
       onLongPress: () {
         final RenderBox? box = context.findRenderObject() as RenderBox?;
@@ -304,11 +300,37 @@ class _DownloadRecordCellState extends State<_DownloadRecordCell> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 11,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
+                        if (record.status == PicSetDownloadTaskStatus.failed &&
+                            record.failureDetails.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => DownloadFailedItemsPage(
+                                      recordId: record.id,
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.refresh, size: 14),
+                              label: const Text('失败项重试'),
+                              style: TextButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
+                                minimumSize: const Size(0, 0),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ),
+                          ),
+                        ],
                         if (progressBar != null) ...[
                           const SizedBox(height: 6),
                           progressBar,
@@ -342,10 +364,7 @@ Future<void> _showDownloadRecordContextMenu(
     context: context,
     position: position,
     items: const <PopupMenuEntry<String>>[
-      PopupMenuItem<String>(
-        value: 'delete_record',
-        child: Text('删除记录（保留文件）'),
-      ),
+      PopupMenuItem<String>(value: 'delete_record', child: Text('删除记录（保留文件）')),
       PopupMenuItem<String>(
         value: 'delete_record_and_files',
         child: Text('删除记录和本地文件'),
@@ -364,11 +383,7 @@ Future<void> _showDownloadRecordContextMenu(
     return;
   }
   if (action == 'delete_record_and_files') {
-    await _confirmRemoveDownloadRecord(
-      context,
-      record,
-      deleteLocalFiles: true,
-    );
+    await _confirmRemoveDownloadRecord(context, record, deleteLocalFiles: true);
   }
 }
 
@@ -417,9 +432,9 @@ Future<void> _confirmRemoveDownloadRecord(
     // ignore: avoid_print
     print('  stack=$st');
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('删除失败：$e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('删除失败：$e')));
     }
   }
 }
@@ -442,11 +457,7 @@ Widget? _downloadRecordProgressBar(
         return null;
       }
       final double v = (p.imageJobsFinished / total).clamp(0.0, 1.0);
-      return _downloadLinearBar(
-        context,
-        value: v,
-        color: cs.outline,
-      );
+      return _downloadLinearBar(context, value: v, color: cs.outline);
     case PicSetDownloadTaskStatus.inProgress:
       if (!p.parseFinished) {
         return _downloadLinearBar(context, indeterminate: true);
@@ -505,6 +516,9 @@ String _statusDetail(PicSetDownloadRecord record) {
       final int n = p.plannedImageTotal ?? p.imageJobsSucceeded;
       return n > 0 ? '共 $n 张' : '已完成';
     case PicSetDownloadTaskStatus.failed:
+      if (record.failureDetails.isNotEmpty) {
+        return '失败 ${record.failureDetails.length} 张 · 支持重试';
+      }
       return record.lastErrorMessage ?? '失败';
   }
 }

@@ -37,9 +37,16 @@ CREATE TABLE $tableName (
   parse_finished_at_ms INTEGER,
   completed_at_ms INTEGER,
   last_error_message TEXT,
+  failure_details_json TEXT NOT NULL DEFAULT '[]',
   local_dir_relative TEXT NOT NULL
 )
 ''');
+  }
+
+  static Future<void> migrateV1ToV2(Database db) async {
+    await db.execute(
+      'ALTER TABLE $tableName ADD COLUMN failure_details_json TEXT NOT NULL DEFAULT \'[]\'',
+    );
   }
 
   Future<List<PicSetDownloadRecord>> queryAllOrderByCreatedDesc() async {
@@ -70,11 +77,7 @@ CREATE TABLE $tableName (
   }
 
   Future<void> deleteById(String id) async {
-    await _db.delete(
-      tableName,
-      where: 'id = ?',
-      whereArgs: <Object>[id],
-    );
+    await _db.delete(tableName, where: 'id = ?', whereArgs: <Object>[id]);
   }
 
   Map<String, Object?> _recordToRow(PicSetDownloadRecord r) {
@@ -100,6 +103,11 @@ CREATE TABLE $tableName (
       'parse_finished_at_ms': r.parseFinishedAt?.millisecondsSinceEpoch,
       'completed_at_ms': r.completedAt?.millisecondsSinceEpoch,
       'last_error_message': r.lastErrorMessage,
+      'failure_details_json': jsonEncode(
+        r.failureDetails
+            .map((PicSetDownloadFailureDetail e) => e.toJson())
+            .toList(),
+      ),
       'local_dir_relative': r.localDirRelativeToApplicationDocuments,
     };
   }
@@ -113,6 +121,17 @@ CREATE TABLE $tableName (
     final Map<String, String> headers = headersMap.map(
       (String k, dynamic v) => MapEntry(k, v.toString()),
     );
+    final List<dynamic> failureDetailsRaw =
+        jsonDecode(row['failure_details_json'] as String? ?? '[]')
+            as List<dynamic>;
+    final List<PicSetDownloadFailureDetail> failureDetails = failureDetailsRaw
+        .map((dynamic e) {
+          final Map<String, dynamic> detailMap = e is Map<String, dynamic>
+              ? e
+              : (e as Map).cast<String, dynamic>();
+          return PicSetDownloadFailureDetail.fromJson(detailMap);
+        })
+        .toList();
 
     return PicSetDownloadRecord(
       id: row['id']! as String,
@@ -125,8 +144,8 @@ CREATE TABLE $tableName (
       thumbnailHttpHeaders: Map<String, String>.unmodifiable(headers),
       progress: PicSetDownloadProgress(
         parsePagesLoaded: (row['parse_pages_loaded'] as num).toInt(),
-        parseUniqueImagesSoFar:
-            (row['parse_unique_images_so_far'] as num).toInt(),
+        parseUniqueImagesSoFar: (row['parse_unique_images_so_far'] as num)
+            .toInt(),
         parseFinished: (row['parse_finished'] as num).toInt() != 0,
         plannedImageTotal: row['planned_image_total'] == null
             ? null
@@ -155,7 +174,11 @@ CREATE TABLE $tableName (
               (row['completed_at_ms'] as num).toInt(),
             ),
       lastErrorMessage: row['last_error_message'] as String?,
-      localDirRelativeToApplicationDocuments: row['local_dir_relative']! as String,
+      failureDetails: List<PicSetDownloadFailureDetail>.unmodifiable(
+        failureDetails,
+      ),
+      localDirRelativeToApplicationDocuments:
+          row['local_dir_relative']! as String,
     );
   }
 

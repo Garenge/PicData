@@ -17,7 +17,7 @@ class PicDatabase {
   static const String fileName = 'pic_data.sqlite';
 
   /// 逻辑库版本；表结构变更时递增并在 [openDatabase] 中 migration。
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
 
   bool _initialized = false;
 
@@ -47,6 +47,11 @@ class PicDatabase {
       version: schemaVersion,
       onCreate: (Database db, int version) async {
         await PicSetDownloadRecordDao.createTableV1(db);
+      },
+      onUpgrade: (Database db, int oldVersion, int newVersion) async {
+        if (oldVersion < 2) {
+          await PicSetDownloadRecordDao.migrateV1ToV2(db);
+        }
       },
     );
     _initialized = true;

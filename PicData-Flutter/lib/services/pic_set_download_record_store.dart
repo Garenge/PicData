@@ -9,20 +9,24 @@ import 'package:pic_data/services/download_file_service.dart';
 import 'package:pic_data/services/pic_download_oc_path.dart';
 import 'package:pic_data/services/pic_download_types.dart';
 
-const String _logStore = 'PicData-Flutter/lib/services/pic_set_download_record_store.dart';
+const String _logStore =
+    'PicData-Flutter/lib/services/pic_set_download_record_store.dart';
 
 /// 套图下载记录的内存仓库；UI 可 `addListener` 或通过上层状态管理订阅。
 class PicSetDownloadRecordStore extends ChangeNotifier {
   PicSetDownloadRecordStore._();
 
-  static final PicSetDownloadRecordStore instance = PicSetDownloadRecordStore._();
+  static final PicSetDownloadRecordStore instance =
+      PicSetDownloadRecordStore._();
 
   final List<PicSetDownloadRecord> _records = <PicSetDownloadRecord>[];
 
   /// 冷启动时 [main] 在 [PicDatabase.init] 之后调用：从 SQLite 载入，并将非已完成/失败记录重置为 [PicSetDownloadTaskStatus.queued] 后写回库。
   Future<void> loadFromDatabaseOnStartup() async {
-    final List<PicSetDownloadRecord> list =
-        await PicDatabase.instance.downloadRecords.queryAllOrderByCreatedDesc();
+    final List<PicSetDownloadRecord> list = await PicDatabase
+        .instance
+        .downloadRecords
+        .queryAllOrderByCreatedDesc();
     _records.clear();
     for (final PicSetDownloadRecord r in list) {
       PicSetDownloadRecord row = r;
@@ -49,7 +53,8 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
     }());
   }
 
-  List<PicSetDownloadRecord> get records => List<PicSetDownloadRecord>.unmodifiable(_records);
+  List<PicSetDownloadRecord> get records =>
+      List<PicSetDownloadRecord>.unmodifiable(_records);
 
   PicSetDownloadRecord? tryGet(String taskId) {
     for (final PicSetDownloadRecord r in _records) {
@@ -68,7 +73,9 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
     String taskId, {
     bool deleteLocalFiles = false,
   }) async {
-    final int i = _records.indexWhere((PicSetDownloadRecord r) => r.id == taskId);
+    final int i = _records.indexWhere(
+      (PicSetDownloadRecord r) => r.id == taskId,
+    );
     if (i < 0) {
       return;
     }
@@ -77,8 +84,8 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
       try {
         final String abs = await DownloadFileService.instance
             .absolutePathFromApplicationDocumentsRelative(
-          rec.localDirRelativeToApplicationDocuments,
-        );
+              rec.localDirRelativeToApplicationDocuments,
+            );
         final Directory dir = Directory(abs);
         if (await dir.exists()) {
           await dir.delete(recursive: true);
@@ -102,15 +109,22 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
       print('  stack=$st');
       rethrow;
     }
-    final int j = _records.indexWhere((PicSetDownloadRecord r) => r.id == taskId);
+    final int j = _records.indexWhere(
+      (PicSetDownloadRecord r) => r.id == taskId,
+    );
     if (j >= 0) {
       _records.removeAt(j);
     }
     notifyListeners();
   }
 
-  void _replace(String taskId, PicSetDownloadRecord Function(PicSetDownloadRecord r) fn) {
-    final int i = _records.indexWhere((PicSetDownloadRecord r) => r.id == taskId);
+  void _replace(
+    String taskId,
+    PicSetDownloadRecord Function(PicSetDownloadRecord r) fn,
+  ) {
+    final int i = _records.indexWhere(
+      (PicSetDownloadRecord r) => r.id == taskId,
+    );
     if (i < 0) {
       return;
     }
@@ -180,8 +194,18 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
   }
 
   /// 队列 B 单图任务结束：记录成功或失败（整套收尾时据此判断是否 [markCompleted]）。
-  void recordImageJobOutcome(String taskId, {required bool success}) {
+  void recordImageJobOutcome(
+    String taskId, {
+    required bool success,
+    PicSetDownloadFailureDetail? failureDetail,
+  }) {
     _replace(taskId, (PicSetDownloadRecord r) {
+      final List<PicSetDownloadFailureDetail> nextFailureDetails = success
+          ? r.failureDetails
+          : <PicSetDownloadFailureDetail>[
+              ...r.failureDetails,
+              if (failureDetail != null) failureDetail,
+            ];
       return r.copyWith(
         progress: r.progress.copyWith(
           imageJobsSucceeded: success
@@ -191,6 +215,7 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
               ? r.progress.imageJobsFailed
               : r.progress.imageJobsFailed + 1,
         ),
+        failureDetails: nextFailureDetails,
       );
     });
   }
@@ -214,6 +239,80 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
     });
   }
 
+  void applyFailureRetryResult(
+    String taskId, {
+    required PicSetDownloadFailureDetail target,
+    required bool success,
+    String? failureReason,
+  }) {
+    _replace(taskId, (PicSetDownloadRecord r) {
+      final List<PicSetDownloadFailureDetail> current = r.failureDetails;
+      final int idx = current.indexWhere(
+        (PicSetDownloadFailureDetail d) => d.identityKey == target.identityKey,
+      );
+      if (idx < 0) {
+        return r;
+      }
+      final List<PicSetDownloadFailureDetail> nextDetails =
+          <PicSetDownloadFailureDetail>[...current];
+      PicSetDownloadProgress nextProgress = r.progress;
+      PicSetDownloadTaskStatus nextStatus = r.status;
+      DateTime? nextCompletedAt = r.completedAt;
+      String? nextMessage = r.lastErrorMessage;
+
+      if (success) {
+        nextDetails.removeAt(idx);
+        nextProgress = nextProgress.copyWith(
+          imageJobsSucceeded: nextProgress.imageJobsSucceeded + 1,
+          imageJobsFailed: nextProgress.imageJobsFailed > 0
+              ? nextProgress.imageJobsFailed - 1
+              : 0,
+        );
+        if (nextDetails.isEmpty) {
+          nextStatus = PicSetDownloadTaskStatus.completed;
+          nextCompletedAt = DateTime.now();
+          nextMessage = null;
+        } else {
+          nextStatus = PicSetDownloadTaskStatus.failed;
+          nextMessage = '仍有 ${nextDetails.length} 张失败，可继续重试';
+        }
+      } else {
+        nextDetails[idx] = PicSetDownloadFailureDetail(
+          sequence: target.sequence,
+          fileName: target.fileName,
+          imageUrl: target.imageUrl,
+          detailHref: target.detailHref,
+          reason: failureReason ?? target.reason,
+          occurredAt: DateTime.now(),
+        );
+        nextStatus = PicSetDownloadTaskStatus.failed;
+        nextMessage = '重试失败：${failureReason ?? target.reason}';
+      }
+
+      return PicSetDownloadRecord(
+        id: r.id,
+        contentHref: r.contentHref,
+        title: r.title,
+        thumbnailUrl: r.thumbnailUrl,
+        entryDetailHref: r.entryDetailHref,
+        host: r.host,
+        status: nextStatus,
+        progress: nextProgress,
+        createdAt: r.createdAt,
+        parseStartedAt: r.parseStartedAt,
+        parseFinishedAt: r.parseFinishedAt,
+        completedAt: nextCompletedAt,
+        lastErrorMessage: nextMessage,
+        failureDetails: List<PicSetDownloadFailureDetail>.unmodifiable(
+          nextDetails,
+        ),
+        localDirRelativeToApplicationDocuments:
+            r.localDirRelativeToApplicationDocuments,
+        thumbnailHttpHeaders: r.thumbnailHttpHeaders,
+      );
+    });
+  }
+
   /// 按本地目录内实际文件数校正 [PicSetDownloadProgress.imageJobsSucceeded]（排除 `urls.txt` 等）。
   ///
   /// 仅在已结束分页解析、且已知 [PicSetDownloadProgress.plannedImageTotal] 时校正；用于 UI 与磁盘对齐。
@@ -228,8 +327,8 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
       try {
         final String abs = await DownloadFileService.instance
             .absolutePathFromApplicationDocumentsRelative(
-          record.localDirRelativeToApplicationDocuments,
-        );
+              record.localDirRelativeToApplicationDocuments,
+            );
         final Directory dir = Directory(abs);
         if (!await dir.exists()) {
           continue;

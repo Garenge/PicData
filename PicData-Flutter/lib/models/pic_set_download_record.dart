@@ -60,12 +60,12 @@ class PicHostSnapshot {
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'title': title,
-        'hostUrl': hostUrl,
-        'mark': mark,
-        'referer': referer,
-        'sourceType': sourceType,
-      };
+    'title': title,
+    'hostUrl': hostUrl,
+    'mark': mark,
+    'referer': referer,
+    'sourceType': sourceType,
+  };
 
   factory PicHostSnapshot.fromJson(Map<String, dynamic> json) {
     return PicHostSnapshot(
@@ -128,6 +128,49 @@ class PicSetDownloadProgress {
   }
 }
 
+/// 单图下载失败明细：用于落库并在「失败」卡片查看。
+class PicSetDownloadFailureDetail {
+  const PicSetDownloadFailureDetail({
+    required this.sequence,
+    required this.fileName,
+    required this.imageUrl,
+    required this.reason,
+    required this.occurredAt,
+    this.detailHref,
+  });
+
+  final int sequence;
+  final String fileName;
+  final String imageUrl;
+  final String reason;
+  final DateTime occurredAt;
+  final String? detailHref;
+
+  String get identityKey => '$sequence|$fileName|$imageUrl';
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'sequence': sequence,
+    'fileName': fileName,
+    'imageUrl': imageUrl,
+    'reason': reason,
+    'occurredAtMs': occurredAt.millisecondsSinceEpoch,
+    'detailHref': detailHref,
+  };
+
+  factory PicSetDownloadFailureDetail.fromJson(Map<String, dynamic> json) {
+    return PicSetDownloadFailureDetail(
+      sequence: (json['sequence'] as num?)?.toInt() ?? 0,
+      fileName: json['fileName'] as String? ?? '',
+      imageUrl: json['imageUrl'] as String? ?? '',
+      reason: json['reason'] as String? ?? 'unknown',
+      occurredAt: DateTime.fromMillisecondsSinceEpoch(
+        (json['occurredAtMs'] as num?)?.toInt() ?? 0,
+      ),
+      detailHref: json['detailHref'] as String?,
+    );
+  }
+}
+
 class PicSetDownloadRecord {
   const PicSetDownloadRecord({
     required this.id,
@@ -143,6 +186,7 @@ class PicSetDownloadRecord {
     this.parseFinishedAt,
     this.completedAt,
     this.lastErrorMessage,
+    this.failureDetails = const <PicSetDownloadFailureDetail>[],
     required this.localDirRelativeToApplicationDocuments,
     required this.thumbnailHttpHeaders,
   });
@@ -163,6 +207,7 @@ class PicSetDownloadRecord {
   final DateTime? parseFinishedAt;
   final DateTime? completedAt;
   final String? lastErrorMessage;
+  final List<PicSetDownloadFailureDetail> failureDetails;
 
   /// 相对 [path_provider] 的「应用文档目录」的路径（`path` 包语义，随平台分隔符变化）。
   ///
@@ -185,7 +230,8 @@ class PicSetDownloadRecord {
       status: PicSetDownloadTaskStatus.queued,
       progress: const PicSetDownloadProgress(),
       createdAt: DateTime.now(),
-      localDirRelativeToApplicationDocuments: localDirRelativeToApplicationDocuments,
+      localDirRelativeToApplicationDocuments:
+          localDirRelativeToApplicationDocuments,
       thumbnailHttpHeaders: Map<String, String>.unmodifiable(
         buildGalleryListImageHeaders(task.host),
       ),
@@ -206,6 +252,7 @@ class PicSetDownloadRecord {
     DateTime? parseFinishedAt,
     DateTime? completedAt,
     String? lastErrorMessage,
+    List<PicSetDownloadFailureDetail>? failureDetails,
     String? localDirRelativeToApplicationDocuments,
     Map<String, String>? thumbnailHttpHeaders,
   }) {
@@ -223,6 +270,9 @@ class PicSetDownloadRecord {
       parseFinishedAt: parseFinishedAt ?? this.parseFinishedAt,
       completedAt: completedAt ?? this.completedAt,
       lastErrorMessage: lastErrorMessage ?? this.lastErrorMessage,
+      failureDetails: List<PicSetDownloadFailureDetail>.unmodifiable(
+        failureDetails ?? this.failureDetails,
+      ),
       localDirRelativeToApplicationDocuments:
           localDirRelativeToApplicationDocuments ??
           this.localDirRelativeToApplicationDocuments,
@@ -272,7 +322,9 @@ class PicSetDownloadRecord {
       parseFinishedAt: null,
       completedAt: null,
       lastErrorMessage: null,
-      localDirRelativeToApplicationDocuments: localDirRelativeToApplicationDocuments,
+      failureDetails: const <PicSetDownloadFailureDetail>[],
+      localDirRelativeToApplicationDocuments:
+          localDirRelativeToApplicationDocuments,
     );
   }
 }

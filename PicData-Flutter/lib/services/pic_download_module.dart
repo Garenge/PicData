@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:pic_data/models/pic_content.dart';
 import 'package:pic_data/models/pic_net_models.dart';
 import 'package:pic_data/models/pic_set_download_record.dart';
@@ -29,10 +30,12 @@ class PicDownloadModule {
   static const int maxConcurrentImageDownloads = 3;
 
   final PicDetailPageLoader _pageLoader = PicDetailPageLoader();
-  late final PicSetDownloadManager _parse =
-      PicSetDownloadManager(loader: _pageLoader);
+  late final PicSetDownloadManager _parse = PicSetDownloadManager(
+    loader: _pageLoader,
+  );
 
-  final Queue<PicSetDownloadQueueTask> _setQueue = Queue<PicSetDownloadQueueTask>();
+  final Queue<PicSetDownloadQueueTask> _setQueue =
+      Queue<PicSetDownloadQueueTask>();
   final Set<String> _setHrefInPipeline = <String>{};
   bool _setPumpRunning = false;
 
@@ -102,13 +105,17 @@ class PicDownloadModule {
   /// [PicSetDownloadTaskStatus.queued] 的记录按 [PicSetDownloadRecord.createdAt] 升序重新推入队列 A
   /// （不新建库行、不改动 [PicSetDownloadQueueTask.id]）。
   void resumePersistedQueuedTasksIfAny() {
-    final List<PicSetDownloadRecord> queued = PicSetDownloadRecordStore.instance.records
-        .where((PicSetDownloadRecord r) => r.status == PicSetDownloadTaskStatus.queued)
-        .toList()
-      ..sort(
-        (PicSetDownloadRecord a, PicSetDownloadRecord b) =>
-            a.createdAt.compareTo(b.createdAt),
-      );
+    final List<PicSetDownloadRecord> queued =
+        PicSetDownloadRecordStore.instance.records
+            .where(
+              (PicSetDownloadRecord r) =>
+                  r.status == PicSetDownloadTaskStatus.queued,
+            )
+            .toList()
+          ..sort(
+            (PicSetDownloadRecord a, PicSetDownloadRecord b) =>
+                a.createdAt.compareTo(b.createdAt),
+          );
     if (queued.isEmpty) {
       return;
     }
@@ -205,8 +212,9 @@ class PicDownloadModule {
       final pendingImages = <_PendingSetImage>[];
       var parsePagesLoaded = 0;
 
-      final setDir =
-          await DownloadFileService.instance.ensureSubDirectory(subFolder);
+      final setDir = await DownloadFileService.instance.ensureSubDirectory(
+        subFolder,
+      );
       final urlsFile = File('${setDir.path}/urls.txt');
       await urlsFile.writeAsString('', flush: true);
 
@@ -290,10 +298,20 @@ class PicDownloadModule {
             headers: headers,
             targetFile: file,
             replaceExistingImageFiles: task.replaceExistingImageFiles,
-            onFinished: (bool success) {
+            onFinished: (_ImageDownloadOutcome outcome) {
               PicSetDownloadRecordStore.instance.recordImageJobOutcome(
                 task.id,
-                success: success,
+                success: outcome.success,
+                failureDetail: outcome.success
+                    ? null
+                    : PicSetDownloadFailureDetail(
+                        sequence: seq,
+                        fileName: fileName,
+                        imageUrl: pending.url,
+                        detailHref: pending.detailHref,
+                        reason: outcome.failureReason ?? 'unknown',
+                        occurredAt: DateTime.now(),
+                      ),
               );
               inFlightCount--;
               tryComplete();
@@ -306,8 +324,8 @@ class PicDownloadModule {
       tryComplete();
       await completer.future;
 
-      final PicSetDownloadRecord? sumRec =
-          PicSetDownloadRecordStore.instance.tryGet(task.id);
+      final PicSetDownloadRecord? sumRec = PicSetDownloadRecordStore.instance
+          .tryGet(task.id);
       final int plannedTotal =
           sumRec?.progress.plannedImageTotal ?? pendingImages.length;
       final int succeeded = sumRec?.progress.imageJobsSucceeded ?? 0;
@@ -360,62 +378,120 @@ class PicDownloadModule {
   }
 
   Future<void> _runOneImageDownload(_ImageDownloadJob job) async {
-    var downloadOk = false;
+    final PicSingleImageRetryResult result = await _downloadImageToFile(
+      setTitle: job.setTitle,
+      fileName: job.fileName,
+      sequence: job.sequence,
+      imageUrl: job.imageUrl,
+      headers: job.headers,
+      targetFile: job.targetFile,
+      replaceExistingImageFiles: job.replaceExistingImageFiles,
+    );
+    // ignore: avoid_print
+    try {
+      job.onFinished(
+        _ImageDownloadOutcome(
+          success: result.success,
+          failureReason: result.failureReason,
+        ),
+      );
+    } finally {
+      _imageInFlight--;
+      _pumpImageQueue();
+    }
+  }
+
+  Future<PicSingleImageRetryResult> retryFailedImage({
+    required PicSetDownloadRecord record,
+    required PicSetDownloadFailureDetail detail,
+    bool replaceExistingImageFile = true,
+  }) async {
+    final String absDir = await DownloadFileService.instance
+        .absolutePathFromApplicationDocumentsRelative(
+          record.localDirRelativeToApplicationDocuments,
+        );
+    final File targetFile = File(p.join(absDir, detail.fileName));
+    final String detailUrl =
+        (detail.detailHref != null && detail.detailHref!.isNotEmpty)
+        ? detail.detailHref!
+        : record.entryDetailHref;
+    final Map<String, String>? headers =
+        PicDetailPageLoader.buildDetailRequestHeaders(
+          detailUrl: detailUrl,
+          host: record.host.toLoosePicHost(),
+        );
+    return _downloadImageToFile(
+      setTitle: record.title,
+      fileName: detail.fileName,
+      sequence: detail.sequence,
+      imageUrl: detail.imageUrl,
+      headers: headers,
+      targetFile: targetFile,
+      replaceExistingImageFiles: replaceExistingImageFile,
+    );
+  }
+
+  Future<PicSingleImageRetryResult> _downloadImageToFile({
+    required String setTitle,
+    required String fileName,
+    required int sequence,
+    required String imageUrl,
+    required Map<String, String>? headers,
+    required File targetFile,
+    required bool replaceExistingImageFiles,
+  }) async {
     // ignore: avoid_print
     print(
-      '$_logCtx#_runOneImageDownload: file_begin '
-      'set="${job.setTitle}" file="${job.fileName}" seq=${job.sequence}',
+      '$_logCtx#_downloadImageToFile: file_begin '
+      'set="$setTitle" file="$fileName" seq=$sequence',
     );
     try {
-      if (await job.targetFile.exists()) {
-        if (job.replaceExistingImageFiles) {
-          await job.targetFile.delete();
+      if (await targetFile.exists()) {
+        if (replaceExistingImageFiles) {
+          await targetFile.delete();
           // ignore: avoid_print
           print(
-            '$_logCtx#_runOneImageDownload: deleted_existing '
-            'set="${job.setTitle}" file="${job.fileName}" seq=${job.sequence}',
+            '$_logCtx#_downloadImageToFile: deleted_existing '
+            'set="$setTitle" file="$fileName" seq=$sequence',
           );
         } else {
-          downloadOk = true;
           // ignore: avoid_print
           print(
-            '$_logCtx#_runOneImageDownload: file_end '
-            'set="${job.setTitle}" file="${job.fileName}" seq=${job.sequence} '
-            'status=skipped_exists',
+            '$_logCtx#_downloadImageToFile: file_end '
+            'set="$setTitle" file="$fileName" seq=$sequence status=skipped_exists',
           );
-          return;
+          return const PicSingleImageRetryResult(success: true);
         }
       }
-      final bytes = await NetClient.instance.getBytes(
-        job.imageUrl,
-        headers: job.headers,
+      final List<int> bytes = await NetClient.instance.getBytes(
+        imageUrl,
+        headers: headers,
       );
-      await job.targetFile.writeAsBytes(bytes);
-      downloadOk = true;
+      await targetFile.writeAsBytes(bytes);
       // ignore: avoid_print
       print(
-        '$_logCtx#_runOneImageDownload: file_end '
-        'set="${job.setTitle}" file="${job.fileName}" seq=${job.sequence} '
-        'status=ok bytes=${bytes.length}',
+        '$_logCtx#_downloadImageToFile: file_end '
+        'set="$setTitle" file="$fileName" seq=$sequence status=ok bytes=${bytes.length}',
       );
+      return const PicSingleImageRetryResult(success: true);
     } catch (e, st) {
       // ignore: avoid_print
       print(
-        '$_logCtx#_runOneImageDownload: file_end '
-        'set="${job.setTitle}" file="${job.fileName}" seq=${job.sequence} '
-        'status=failed error=$e',
+        '$_logCtx#_downloadImageToFile: file_end '
+        'set="$setTitle" file="$fileName" seq=$sequence status=failed error=$e',
       );
       // ignore: avoid_print
       print('  stack=$st');
-    } finally {
-      try {
-        job.onFinished(downloadOk);
-      } finally {
-        _imageInFlight--;
-        _pumpImageQueue();
-      }
+      return PicSingleImageRetryResult(success: false, failureReason: '$e');
     }
   }
+}
+
+class PicSingleImageRetryResult {
+  const PicSingleImageRetryResult({required this.success, this.failureReason});
+
+  final bool success;
+  final String? failureReason;
 }
 
 class _ImageDownloadJob {
@@ -441,7 +517,14 @@ class _ImageDownloadJob {
   final bool replaceExistingImageFiles;
 
   /// [success]：已落盘或本地已存在；`false` 表示下载/写盘失败。
-  final void Function(bool success) onFinished;
+  final void Function(_ImageDownloadOutcome outcome) onFinished;
+}
+
+class _ImageDownloadOutcome {
+  const _ImageDownloadOutcome({required this.success, this.failureReason});
+
+  final bool success;
+  final String? failureReason;
 }
 
 class _PendingSetImage {
