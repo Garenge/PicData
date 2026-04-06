@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:pic_data/debug/page_backdoor.dart';
 import 'package:pic_data/pages/files/file_browser_entry_kind.dart';
+import 'package:pic_data/pages/files/local_image_gallery_page.dart';
 import 'package:pic_data/pages/files/text_file_preview_page.dart';
 import 'package:pic_data/pages/files/files_tab_refresh_scope.dart';
 import 'package:pic_data/services/open_local_folder.dart';
@@ -148,20 +149,49 @@ class FileBrowserPageState extends State<FileBrowserPage> {
     );
   }
 
+  /// 当前目录下「图片」文件路径，按自然序排序（与网格列表一致）。
+  List<String> _collectImagePathsSorted() {
+    final List<FileSystemEntity> images = _entries
+        .where(
+          (FileSystemEntity e) =>
+              e is File &&
+              classifyFileBrowserEntry(e) == FileBrowserEntryKind.image,
+        )
+        .toList();
+    images.sort(
+      (FileSystemEntity a, FileSystemEntity b) =>
+          compareFilenameNatural(_entityName(a), _entityName(b)),
+    );
+    return images.map((FileSystemEntity e) => e.path).toList();
+  }
+
+  void _openImageGallery(File tapped) {
+    final List<String> paths = _collectImagePathsSorted();
+    if (paths.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('当前目录没有可预览的图片')),
+      );
+      return;
+    }
+    final int initial = paths.indexOf(tapped.path);
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) => LocalImageGalleryPage(
+          imagePaths: paths,
+          initialIndex: initial >= 0 ? initial : 0,
+        ),
+      ),
+    );
+  }
+
   void _handleEntryTap(FileSystemEntity entry) {
     if (entry is Directory) {
       _openDirectory(entry);
       return;
     }
     final kind = classifyFileBrowserEntry(entry);
-    if (kind == FileBrowserEntryKind.image) {
-      // TODO: 接入图片全屏预览（PhotoView / 画廊等）
-      debugPrint(
-        'PicData-Flutter/lib/pages/files/file_browser_page.dart#_handleEntryTap: 图片预览待开发 path=${entry.path}',
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('图片预览功能待开发')),
-      );
+    if (kind == FileBrowserEntryKind.image && entry is File) {
+      _openImageGallery(entry);
     } else if (entry is File && filePathSupportsTextPreview(entry.path)) {
       final String name = _entityName(entry);
       Navigator.of(context).push<void>(
