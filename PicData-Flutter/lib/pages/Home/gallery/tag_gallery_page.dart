@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:pic_data/models/home_entry.dart';
 import 'package:pic_data/models/pic_net_models.dart';
 import 'package:pic_data/models/pic_content.dart';
 import 'package:pic_data/services/net_client.dart';
 import 'package:pic_data/services/pic_download_module.dart';
 import 'package:pic_data/services/web_page_parser.dart';
+import 'package:pic_data/utils/gallery_list_image_headers.dart';
+import 'package:pic_data/widgets/gallery_list_thumbnail.dart';
 import 'package:pic_data/debug/page_backdoor.dart';
 import 'pic_detail_page.dart';
 
@@ -35,25 +36,8 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
   bool _isLoadingMore = false;
   Object? _loadMoreError;
 
-  /// 根据当前站点配置构造请求需要的 Header。
-  ///
-  /// - 如果配置了 `PicHost.referer`，则填充 `referer` 字段；
-  /// - 统一追加一个桌面浏览器的 User-Agent，尽量模拟真实浏览器环境。
-  Map<String, String>? _buildImageHeaders() {
-    final headers = <String, String>{};
-
-    final referer = widget.host?.referer;
-    if (referer != null && referer.isNotEmpty) {
-      headers['referer'] = referer;
-    }
-
-    headers['User-Agent'] =
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_0_1) '
-        'AppleWebKit/537.36 (KHTML, like Gecko) '
-        'Chrome/87.0.4280.66 Safari/537.36';
-
-    if (headers.isEmpty) return null;
-    return headers;
+  Map<String, String> _buildImageHeaders() {
+    return buildGalleryListImageHeaders(widget.host);
   }
 
   @override
@@ -365,7 +349,7 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeOut,
         transform: _isHovered
-            ? (Matrix4.identity()..scale(1.02))
+            ? (Matrix4.identity()..scaleByDouble(1.02, 1.02, 1.02, 1))
             : Matrix4.identity(),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
@@ -423,7 +407,7 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
-                  child: _GalleryThumbnail(
+                  child: GalleryListThumbnail(
                     imageUrl: item.thumbnail,
                     headers: headers,
                     title: item.title,
@@ -478,85 +462,6 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 统一的缩略图展示组件：优先加载网络缩略图，失败或无图时使用系统占位缩略图。
-class _GalleryThumbnail extends StatelessWidget {
-  const _GalleryThumbnail({
-    required this.imageUrl,
-    required this.headers,
-    required this.title,
-  });
-
-  final String imageUrl;
-  final Map<String, String>? headers;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    // 没有远程缩略图时，直接使用占位图。
-    if (imageUrl.isEmpty) {
-      return _buildPlaceholder(theme);
-    }
-
-    // 有远程缩略图时：先显示占位图，等网络图片加载成功后替换显示。
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          _buildPlaceholder(theme),
-          CachedNetworkImage(
-            imageUrl: imageUrl,
-            httpHeaders: headers,
-            fit: BoxFit.cover,
-            placeholder: (context, _) => const SizedBox.shrink(),
-            errorWidget: (context, _, __) => const SizedBox.shrink(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlaceholder(ThemeData theme) {
-    final bgColor = theme.colorScheme.surfaceVariant.withValues(alpha: 0.6);
-    final borderColor = theme.dividerColor.withValues(alpha: 0.3);
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-        color: bgColor,
-        border: Border.all(color: borderColor, width: 0.5),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [bgColor, bgColor.withValues(alpha: 0.4)],
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.collections_outlined,
-              size: 32,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '套图',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                letterSpacing: 1.2,
-              ),
-            ),
-          ],
         ),
       ),
     );

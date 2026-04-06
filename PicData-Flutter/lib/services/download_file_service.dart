@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -79,6 +80,34 @@ class DownloadFileService {
       await dir.create(recursive: true);
     }
     return dir;
+  }
+
+  /// 将相对下载根目录的子路径（与 [ensureSubDirectory] 相同规则）解析为当前环境下的绝对路径。
+  Future<String> absolutePathForRootRelativeSubfolder(String relativeToRoot) async {
+    final Directory dir = await ensureSubDirectory(relativeToRoot);
+    return dir.path;
+  }
+
+  /// 套图目录相对于 [getApplicationDocumentsDirectory] 的路径（`path` 包格式）。
+  ///
+  /// 用于持久化：iOS/Android 等沙盒根会变，但文档目录由 [path_provider] 每次解析到当前容器内路径。
+  Future<String> relativePathFromApplicationDocumentsToSetFolder(
+    String subFolderRelativeToDownloadRoot,
+  ) async {
+    final Directory setDir =
+        await ensureSubDirectory(subFolderRelativeToDownloadRoot);
+    final Directory docsDir = await getApplicationDocumentsDirectory();
+    return p.relative(setDir.path, from: docsDir.path);
+  }
+
+  /// 将 [relativePathFromApplicationDocuments] 拼成当前会话下的绝对路径。
+  Future<String> absolutePathFromApplicationDocumentsRelative(
+    String relativePathFromApplicationDocuments,
+  ) async {
+    final Directory docsDir = await getApplicationDocumentsDirectory();
+    return p.normalize(
+      p.join(docsDir.path, relativePathFromApplicationDocuments),
+    );
   }
 
   Future<File> prepareDownloadFile({

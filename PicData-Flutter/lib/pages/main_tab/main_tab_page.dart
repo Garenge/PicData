@@ -16,12 +16,16 @@ class MainTabPage extends StatefulWidget {
 class _MainTabPageState extends State<MainTabPage> {
   int _selectedIndex = 0;
   int _filesRefreshSignal = 0;
+  int _downloadsRefreshSignal = 0;
 
   void _onTap(int index) {
     setState(() {
       _selectedIndex = index;
       if (index == 1) {
         _filesRefreshSignal++;
+      }
+      if (index == 2) {
+        _downloadsRefreshSignal++;
       }
     });
   }
@@ -38,7 +42,8 @@ class _MainTabPageState extends State<MainTabPage> {
                 FilesPage(refreshSignal: _filesRefreshSignal),
           ),
           TabRootNavigator(
-            homeBuilder: (_) => const DownloadsPage(),
+            homeBuilder: (_) =>
+                DownloadsPage(refreshSignal: _downloadsRefreshSignal),
           ),
           TabRootNavigator(
             homeBuilder: (_) => const SettingsPage(),

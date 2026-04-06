@@ -4,12 +4,14 @@ import 'dart:io';
 
 import 'package:pic_data/models/pic_content.dart';
 import 'package:pic_data/models/pic_net_models.dart';
+import 'package:pic_data/models/pic_set_download_record.dart';
 import 'package:pic_data/services/download_file_service.dart';
 import 'package:pic_data/services/net_client.dart';
 import 'package:pic_data/services/pic_detail_page_loader.dart';
 import 'package:pic_data/services/pic_download_oc_path.dart';
 import 'package:pic_data/services/pic_download_types.dart';
 import 'package:pic_data/services/pic_set_download_manager.dart';
+import 'package:pic_data/services/pic_set_download_record_store.dart';
 
 const String _logCtx = 'PicData-Flutter/lib/services/pic_download_module.dart';
 
@@ -64,6 +66,26 @@ class PicDownloadModule {
       host: host,
     );
     _setQueue.add(task);
+    unawaited(() async {
+      try {
+        await PicSetDownloadRecordStore.instance.registerEnqueued(task);
+        if (!task.recordRegistered.isCompleted) {
+          task.recordRegistered.complete();
+        }
+      } catch (e, st) {
+        if (!task.recordRegistered.isCompleted) {
+          task.recordRegistered.completeError(e, st);
+        }
+        _setHrefInPipeline.remove(href);
+        // ignore: avoid_print
+        print(
+          '$_logCtx#enqueueDownloadSet: registerEnqueued failed id=${task.id} '
+          'error=$e',
+        );
+        // ignore: avoid_print
+        print('  stack=$st');
+      }
+    }());
     // ignore: avoid_print
     print(
       'PicDownloadModule 队列A 入队 ${task.content.title} '
@@ -86,6 +108,7 @@ class PicDownloadModule {
             'title="${task.content.title}"',
           );
         } catch (e, st) {
+          PicSetDownloadRecordStore.instance.markFailed(task.id, '$e');
           // ignore: avoid_print
           print('$_logCtx#_pumpSetQueue: task failed id=${task.id} error=$e');
           // ignore: avoid_print
@@ -100,6 +123,18 @@ class PicDownloadModule {
   }
 
   Future<void> _processSetTask(PicSetDownloadQueueTask task) async {
+    try {
+      await task.recordRegistered.future;
+    } catch (e, st) {
+      // ignore: avoid_print
+      print(
+        '$_logCtx#_processSetTask: skip id=${task.id} record not registered: $e',
+      );
+      // ignore: avoid_print
+      print('  stack=$st');
+      return;
+    }
+
     final subFolder = ocDownloadSubFolderPath(
       host: task.host,
       content: task.content,
@@ -112,14 +147,23 @@ class PicDownloadModule {
     );
 
     try {
+      PicSetDownloadRecordStore.instance.markPickedUp(task.id);
+
       final seenUrl = <String>{};
       final pendingImages = <_PendingSetImage>[];
+      var parsePagesLoaded = 0;
+
+      final setDir =
+          await DownloadFileService.instance.ensureSubDirectory(subFolder);
+      final urlsFile = File('${setDir.path}/urls.txt');
+      await urlsFile.writeAsString('', flush: true);
 
       await _parse.walkPagesForSet(
         content: task.content,
         host: task.host,
         logPages: false,
         onPage: (page) async {
+          final chunk = StringBuffer();
           for (final url in page.imageUrls) {
             if (!seenUrl.add(url)) {
               continue;
@@ -127,19 +171,32 @@ class PicDownloadModule {
             pendingImages.add(
               _PendingSetImage(url: url, detailHref: page.href),
             );
+            chunk.writeln(url);
           }
+          if (chunk.isNotEmpty) {
+            await urlsFile.writeAsString(
+              chunk.toString(),
+              mode: FileMode.append,
+              flush: true,
+            );
+          }
+          parsePagesLoaded++;
+          PicSetDownloadRecordStore.instance.applyParsePage(
+            task.id,
+            parsePagesLoaded: parsePagesLoaded,
+            parseUniqueImagesSoFar: pendingImages.length,
+          );
         },
       );
 
-      final setDir =
-          await DownloadFileService.instance.ensureSubDirectory(subFolder);
-      final urlsFile = File('${setDir.path}/urls.txt');
-      await urlsFile.writeAsString(
-        '${pendingImages.map((e) => e.url).join('\n')}\n',
+      PicSetDownloadRecordStore.instance.markParsePhaseDone(
+        task.id,
+        plannedImageTotal: pendingImages.length,
       );
+
       // ignore: avoid_print
       print(
-        '$_logCtx#_processSetTask: urls_txt_written '
+        '$_logCtx#_processSetTask: urls_txt_appended_per_page '
         'path="$subFolder/urls.txt" count=${pendingImages.length}',
       );
 
@@ -174,11 +231,17 @@ class PicDownloadModule {
         );
         _enqueueImage(
           _ImageDownloadJob(
+            setTitle: task.content.title,
+            fileName: fileName,
             sequence: seq,
             imageUrl: pending.url,
             headers: headers,
             targetFile: file,
-            onFinished: () {
+            onFinished: (bool success) {
+              PicSetDownloadRecordStore.instance.recordImageJobOutcome(
+                task.id,
+                success: success,
+              );
               inFlightCount--;
               tryComplete();
             },
@@ -190,12 +253,33 @@ class PicDownloadModule {
       tryComplete();
       await completer.future;
 
-      // ignore: avoid_print
-      print(
-        '$_logCtx#_processSetTask: set_end id=${task.id} '
-        'title="${task.content.title}" status=ok '
-        'urls=${pendingImages.length}',
-      );
+      final PicSetDownloadRecord? sumRec =
+          PicSetDownloadRecordStore.instance.tryGet(task.id);
+      final int plannedTotal =
+          sumRec?.progress.plannedImageTotal ?? pendingImages.length;
+      final int succeeded = sumRec?.progress.imageJobsSucceeded ?? 0;
+      final int failedCount = sumRec?.progress.imageJobsFailed ?? 0;
+
+      if (plannedTotal == 0 || succeeded == plannedTotal) {
+        PicSetDownloadRecordStore.instance.markCompleted(task.id);
+        // ignore: avoid_print
+        print(
+          '$_logCtx#_processSetTask: set_end id=${task.id} '
+          'title="${task.content.title}" status=ok '
+          'urls=${pendingImages.length}',
+        );
+      } else {
+        PicSetDownloadRecordStore.instance.markFailed(
+          task.id,
+          '图片未全部下载成功：成功 $succeeded / 共 $plannedTotal，失败 $failedCount',
+        );
+        // ignore: avoid_print
+        print(
+          '$_logCtx#_processSetTask: set_end id=${task.id} '
+          'title="${task.content.title}" status=incomplete_downloads '
+          'ok=$succeeded planned=$plannedTotal failed=$failedCount',
+        );
+      }
     } catch (e, st) {
       // ignore: avoid_print
       print(
@@ -223,13 +307,20 @@ class PicDownloadModule {
   }
 
   Future<void> _runOneImageDownload(_ImageDownloadJob job) async {
+    var downloadOk = false;
     // ignore: avoid_print
-    print('_runOneImageDownload: file_begin seq=${job.sequence}');
+    print(
+      '$_logCtx#_runOneImageDownload: file_begin '
+      'set="${job.setTitle}" file="${job.fileName}" seq=${job.sequence}',
+    );
     try {
       if (await job.targetFile.exists()) {
+        downloadOk = true;
         // ignore: avoid_print
         print(
-          '_runOneImageDownload: file_end seq=${job.sequence} status=skipped_exists',
+          '$_logCtx#_runOneImageDownload: file_end '
+          'set="${job.setTitle}" file="${job.fileName}" seq=${job.sequence} '
+          'status=skipped_exists',
         );
         return;
       }
@@ -238,22 +329,25 @@ class PicDownloadModule {
         headers: job.headers,
       );
       await job.targetFile.writeAsBytes(bytes);
+      downloadOk = true;
       // ignore: avoid_print
       print(
-        '_runOneImageDownload: file_end seq=${job.sequence} '
+        '$_logCtx#_runOneImageDownload: file_end '
+        'set="${job.setTitle}" file="${job.fileName}" seq=${job.sequence} '
         'status=ok bytes=${bytes.length}',
       );
     } catch (e, st) {
       // ignore: avoid_print
       print(
-        '_runOneImageDownload: file_end seq=${job.sequence} '
+        '$_logCtx#_runOneImageDownload: file_end '
+        'set="${job.setTitle}" file="${job.fileName}" seq=${job.sequence} '
         'status=failed error=$e',
       );
       // ignore: avoid_print
       print('  stack=$st');
     } finally {
       try {
-        job.onFinished();
+        job.onFinished(downloadOk);
       } finally {
         _imageInFlight--;
         _pumpImageQueue();
@@ -264,6 +358,8 @@ class PicDownloadModule {
 
 class _ImageDownloadJob {
   _ImageDownloadJob({
+    required this.setTitle,
+    required this.fileName,
     required this.sequence,
     required this.imageUrl,
     required this.headers,
@@ -271,12 +367,17 @@ class _ImageDownloadJob {
     required this.onFinished,
   });
 
+  final String setTitle;
+  final String fileName;
+
   /// 套图内从 1 起的序号（与本地文件名一致）。
   final int sequence;
   final String imageUrl;
   final Map<String, String>? headers;
   final File targetFile;
-  final void Function() onFinished;
+
+  /// [success]：已落盘或本地已存在；`false` 表示下载/写盘失败。
+  final void Function(bool success) onFinished;
 }
 
 class _PendingSetImage {
