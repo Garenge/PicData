@@ -66,7 +66,7 @@ class _MyAppState extends State<MyApp> {
         fit: StackFit.expand,
         children: <Widget>[
           const MainTabPage(),
-          const DevDebugOverlay(),
+          // const DevDebugOverlay(),
         ],
       ),
     );
