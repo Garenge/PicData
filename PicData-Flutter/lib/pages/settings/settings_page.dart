@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:pic_data/debug/page_backdoor.dart';
+import 'package:pic_data/services/download_concurrency_settings_service.dart';
 import 'package:pic_data/services/download_file_service.dart';
 import 'package:pic_data/services/pic_download_module.dart';
 import 'package:pic_data/services/proxy_settings_service.dart';
@@ -22,6 +23,8 @@ class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _pathController = TextEditingController();
   final TextEditingController _proxyHostController = TextEditingController();
   final TextEditingController _proxyPortController = TextEditingController();
+  final TextEditingController _maxConcurrentDownloadsController =
+      TextEditingController();
   String _currentRootPath = '';
   bool _saving = false;
 
@@ -33,12 +36,25 @@ class _SettingsPageState extends State<SettingsPage> {
     return '${s.proxyHost}:${s.proxyPort}';
   }
 
+  String _maxConcurrentDownloadsSubtitle() {
+    final DownloadConcurrencySettingsService s =
+        DownloadConcurrencySettingsService.instance;
+    final int v = s.maxConcurrentImageDownloads;
+    return '当前 $v 张（允许 ${DownloadConcurrencySettingsService.kMinConcurrentImageDownloads}–'
+        '${DownloadConcurrencySettingsService.kMaxConcurrentImageDownloads}）';
+  }
+
   List<_SettingItem> _buildSettingItems() {
     return <_SettingItem>[
       _SettingItem(
         title: '下载路径',
         subtitle: _currentRootPath.isEmpty ? '加载中...' : _currentRootPath,
         onTap: _saving ? null : _showPathEditorDialog,
+      ),
+      _SettingItem(
+        title: '最大同时下载张数',
+        subtitle: _maxConcurrentDownloadsSubtitle(),
+        onTap: _saving ? null : _showMaxConcurrentDownloadsDialog,
       ),
       _SettingItem(
         title: '网络代理',
@@ -59,8 +75,21 @@ class _SettingsPageState extends State<SettingsPage> {
     DownloadFileService.instance.rootPathNotifier.addListener(_onRootPathChanged);
     ProxySettingsService.instance.proxyHostNotifier.addListener(_onProxyChanged);
     ProxySettingsService.instance.proxyPortNotifier.addListener(_onProxyChanged);
+    DownloadConcurrencySettingsService.instance.maxConcurrentNotifier
+        .addListener(_onMaxConcurrentDownloadsChanged);
     _syncProxyFieldsFromService();
+    _syncMaxConcurrentDownloadsFieldFromService();
     _loadRootPath();
+  }
+
+  void _onMaxConcurrentDownloadsChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  void _syncMaxConcurrentDownloadsFieldFromService() {
+    _maxConcurrentDownloadsController.text =
+        '${DownloadConcurrencySettingsService.instance.maxConcurrentImageDownloads}';
   }
 
   void _onProxyChanged() {
@@ -86,9 +115,12 @@ class _SettingsPageState extends State<SettingsPage> {
     ProxySettingsService.instance.proxyPortNotifier.removeListener(
       _onProxyChanged,
     );
+    DownloadConcurrencySettingsService.instance.maxConcurrentNotifier
+        .removeListener(_onMaxConcurrentDownloadsChanged);
     _pathController.dispose();
     _proxyHostController.dispose();
     _proxyPortController.dispose();
+    _maxConcurrentDownloadsController.dispose();
     super.dispose();
   }
 
@@ -205,6 +237,120 @@ class _SettingsPageState extends State<SettingsPage> {
         });
       }
     }
+  }
+
+  /// 校验通过并完成持久化后为 `true`，此时可关闭输入对话框。
+  Future<bool> _saveMaxConcurrentDownloads() async {
+    final String raw = _maxConcurrentDownloadsController.text.trim();
+    final int? parsed = int.tryParse(raw);
+    if (parsed == null) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '请输入 ${DownloadConcurrencySettingsService.kMinConcurrentImageDownloads}–'
+            '${DownloadConcurrencySettingsService.kMaxConcurrentImageDownloads} 之间的整数',
+          ),
+        ),
+      );
+      return false;
+    }
+    if (parsed < DownloadConcurrencySettingsService.kMinConcurrentImageDownloads ||
+        parsed > DownloadConcurrencySettingsService.kMaxConcurrentImageDownloads) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '允许范围：${DownloadConcurrencySettingsService.kMinConcurrentImageDownloads}–'
+            '${DownloadConcurrencySettingsService.kMaxConcurrentImageDownloads}',
+          ),
+        ),
+      );
+      return false;
+    }
+
+    setState(() {
+      _saving = true;
+    });
+    try {
+      await DownloadConcurrencySettingsService.instance
+          .setMaxConcurrentImageDownloads(parsed);
+      PicDownloadModule.instance.kickImageQueueAfterConcurrencyChange();
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '已设为同时下载 ${DownloadConcurrencySettingsService.instance.maxConcurrentImageDownloads} 张',
+          ),
+        ),
+      );
+      return true;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _showMaxConcurrentDownloadsDialog() async {
+    _syncMaxConcurrentDownloadsFieldFromService();
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          constraints: _kSettingsDialogConstraints,
+          title: const Text('最大同时下载张数'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text(
+                  '控制队列 B 中同时进行中的单图下载数量；保存后立即对新调度生效，'
+                  '已在下载中的任务不会被中断。允许范围 '
+                  '${DownloadConcurrencySettingsService.kMinConcurrentImageDownloads}–'
+                  '${DownloadConcurrencySettingsService.kMaxConcurrentImageDownloads}。',
+                  style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
+                        fontSize: 13,
+                      ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _maxConcurrentDownloadsController,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: '最大同时下载张数',
+                    hintText: '例如 6',
+                  ),
+                  keyboardType: TextInputType.number,
+                  autocorrect: false,
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: _saving ? null : () => Navigator.of(dialogContext).pop(),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: _saving
+                  ? null
+                  : () async {
+                      final bool ok = await _saveMaxConcurrentDownloads();
+                      if (!dialogContext.mounted) return;
+                      if (ok) {
+                        Navigator.of(dialogContext).pop();
+                      }
+                    },
+              child: const Text('确定'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _showProxyEditorDialog() async {

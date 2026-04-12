@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:pic_data/models/pic_content.dart';
 import 'package:pic_data/models/pic_net_models.dart';
 import 'package:pic_data/models/pic_set_download_record.dart';
+import 'package:pic_data/services/download_concurrency_settings_service.dart';
 import 'package:pic_data/services/download_file_service.dart';
 import 'package:pic_data/services/net_client.dart';
 import 'package:pic_data/services/pic_detail_page_loader.dart';
@@ -23,14 +24,11 @@ class _UserPauseException implements Exception {}
 ///
 /// - **队列 A**：用户多次点击下载会 FIFO 排入；单套任务内先**分页解析完**并写入目标目录下的
 ///   `urls.txt`，再为该套入队全部图片；待该套所有图片任务结束（含跳过已存在）后再处理下一套。
-/// - **队列 B**：单张图片 GET + 写盘，默认最多 [maxConcurrentImageDownloads] 并发。
+/// - **队列 B**：单张图片 GET + 写盘，最大并发由 [DownloadConcurrencySettingsService] 配置（默认 3，上限 20）。
 class PicDownloadModule {
   PicDownloadModule._();
 
   static final PicDownloadModule instance = PicDownloadModule._();
-
-  /// 队列 B 最大并发下载数。
-  static const int maxConcurrentImageDownloads = 3;
 
   final PicDetailPageLoader _pageLoader = PicDetailPageLoader();
   late final PicSetDownloadManager _parse = PicSetDownloadManager(
@@ -506,9 +504,16 @@ class PicDownloadModule {
     _pumpImageQueue();
   }
 
+  /// 设置页调整「最大同时下载张数」后调用：新上限立即参与调度；已在飞行中的任务不会被强行取消。
+  void kickImageQueueAfterConcurrencyChange() {
+    _pumpImageQueue();
+  }
+
   void _pumpImageQueue() {
+    final int cap =
+        DownloadConcurrencySettingsService.instance.maxConcurrentImageDownloads;
     while (!_globallyPaused &&
-        _imageInFlight < maxConcurrentImageDownloads &&
+        _imageInFlight < cap &&
         _imageQueue.isNotEmpty) {
       _imageInFlight++;
       final job = _imageQueue.removeFirst();
