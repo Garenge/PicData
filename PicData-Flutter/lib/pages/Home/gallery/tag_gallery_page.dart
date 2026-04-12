@@ -6,10 +6,14 @@ import 'package:pic_data/models/pic_net_models.dart';
 import 'package:pic_data/models/pic_content.dart';
 import 'package:pic_data/services/net_client.dart';
 import 'package:pic_data/services/pic_download_module.dart';
+import 'package:pic_data/services/pic_set_download_record_store.dart';
 import 'package:pic_data/services/web_page_parser.dart';
+import 'package:pic_data/utils/pic_content_download_flags.dart';
+import 'package:pic_data/utils/gallery_grid_layout.dart';
 import 'package:pic_data/utils/gallery_list_image_headers.dart';
 import 'package:pic_data/widgets/gallery_list_thumbnail.dart';
 import 'package:pic_data/debug/page_backdoor.dart';
+import 'pic_content_grid.dart';
 import 'pic_detail_page.dart';
 
 OverlayEntry? _activeHudEntry;
@@ -214,95 +218,123 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
             );
           }
 
-          final initialContents = snapshot.data ?? <PicContent>[];
-          final contents = <PicContent>[...initialContents, ..._extraContents];
-          if (contents.isEmpty) {
-            return const Center(child: Text('暂无数据'));
-          }
+          return ListenableBuilder(
+            listenable: PicSetDownloadRecordStore.instance,
+            builder: (BuildContext context, Widget? _) {
+              final Set<String> completed =
+                  PicSetDownloadRecordStore.instance.completedContentHrefSet;
+              final List<PicContent> initialContents =
+                  applyCompletedDownloadFlagsToContents(
+                snapshot.data ?? <PicContent>[],
+                completed,
+              );
+              final List<PicContent> extraFlagged =
+                  applyCompletedDownloadFlagsToContents(
+                _extraContents,
+                completed,
+              );
+              final contents = <PicContent>[
+                ...initialContents,
+                ...extraFlagged,
+              ];
+              if (contents.isEmpty) {
+                return const Center(child: Text('暂无数据'));
+              }
 
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              const double itemWidth = 180;
-              const double spacing = 12;
-              final headers = _buildImageHeaders();
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final double spacing = galleryGridSpacing(context);
+                  const double desktopItemWidth = 180;
+                  final headers = _buildImageHeaders();
 
-              // 根据屏幕宽度动态计算每行展示几个 cell
-              final maxWidth = constraints.maxWidth;
-              final int crossAxisCount = (maxWidth / (itemWidth + spacing))
-                  .floor()
-                  .clamp(1, 6);
+                  // 根据屏幕宽度动态计算每行展示几个 cell（窄屏收紧目标宽度以保证约三列）
+                  final horizontalInset = galleryPageHorizontalInset(context);
+                  final maxWidth =
+                      constraints.maxWidth - 2 * horizontalInset;
+                  final double itemWidth = PicContentGrid.resolveItemWidth(
+                    context,
+                    maxWidth,
+                    desktopItemWidth,
+                    spacing: spacing,
+                  );
+                  final int crossAxisCount = (maxWidth / (itemWidth + spacing))
+                      .floor()
+                      .clamp(1, 6);
 
-              final gridWidth =
-                  crossAxisCount * (itemWidth + spacing) - spacing;
-              final double sidePadding =
-                  ((maxWidth - gridWidth) / 2).clamp(0, double.infinity);
+                  final gridWidth =
+                      crossAxisCount * (itemWidth + spacing) - spacing;
+                  final double sidePadding =
+                      ((maxWidth - gridWidth) / 2).clamp(0, double.infinity);
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 8,
-                ),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: GridView.builder(
-                        padding: EdgeInsets.symmetric(horizontal: sidePadding),
-                        itemCount: contents.length,
-                        gridDelegate:
-                            SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: crossAxisCount,
-                          mainAxisSpacing: spacing,
-                          crossAxisSpacing: spacing,
-                          // 控制高度（缩略图 + 标题区域），大约 4:5
-                          childAspectRatio: 3 / 4,
-                        ),
-                        itemBuilder: (context, index) {
-                          final item = contents[index];
-                          return _TagGalleryItem(
-                            key: ValueKey(
-                              item.href.isNotEmpty
-                                  ? item.href
-                                  : '${item.title}#$index',
-                            ),
-                            item: item,
-                            headers: headers,
-                            host: widget.host,
-                          );
-                        },
-                      ),
+                  return Padding(
+                    padding: EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: horizontalInset,
                     ),
-                    const SizedBox(height: 8),
-                    if (_isLoadingMore)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8),
-                        child: SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                    else if (_nextPageUrl != null)
-                      Align(
-                        alignment: Alignment.center,
-                        child: TextButton.icon(
-                          onPressed: _loadNextPage,
-                          icon: const Icon(Icons.expand_more),
-                          label: const Text('加载更多'),
-                        ),
-                      ),
-                    if (_loadMoreError != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          '加载更多失败：$_loadMoreError',
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 12,
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: GridView.builder(
+                            padding:
+                                EdgeInsets.symmetric(horizontal: sidePadding),
+                            itemCount: contents.length,
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              mainAxisSpacing: spacing,
+                              crossAxisSpacing: spacing,
+                              // 控制高度（缩略图 + 标题区域），大约 4:5
+                              childAspectRatio: 3 / 4,
+                            ),
+                            itemBuilder: (context, index) {
+                              final item = contents[index];
+                              return _TagGalleryItem(
+                                key: ValueKey(
+                                  item.href.isNotEmpty
+                                      ? item.href
+                                      : '${item.title}#$index',
+                                ),
+                                item: item,
+                                headers: headers,
+                                host: widget.host,
+                              );
+                            },
                           ),
                         ),
-                      ),
-                  ],
-                ),
+                        const SizedBox(height: 8),
+                        if (_isLoadingMore)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            child: SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        else if (_nextPageUrl != null)
+                          Align(
+                            alignment: Alignment.center,
+                            child: TextButton.icon(
+                              onPressed: _loadNextPage,
+                              icon: const Icon(Icons.expand_more),
+                              label: const Text('加载更多'),
+                            ),
+                          ),
+                        if (_loadMoreError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              '加载更多失败：$_loadMoreError',
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
               );
             },
           );
@@ -396,6 +428,15 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
   }
 
   @override
+  void didUpdateWidget(covariant _TagGalleryItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.item.href != oldWidget.item.href ||
+        widget.item.isDownloaded != oldWidget.item.isDownloaded) {
+      _isDownloaded = widget.item.isDownloaded ?? false;
+    }
+  }
+
+  @override
   bool get wantKeepAlive => true;
 
   @override
@@ -481,7 +522,7 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(8),
+                  padding: galleryGridCellTitleInsets(context),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -490,8 +531,8 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
                           item.title,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
+                          style: TextStyle(
+                            fontSize: galleryGridTitleFontSize(context),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -499,10 +540,15 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
                       if (!_isDownloaded)
                         IconButton(
                           tooltip: '下载',
-                          iconSize: 20,
-                          splashRadius: 18,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
+                          iconSize: galleryGridDownloadIconSize(context),
+                          splashRadius:
+                              isCompactGalleryGrid(context) ? 12 : 18,
+                          style: IconButton.styleFrom(
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            minimumSize: Size.zero,
+                            padding: EdgeInsets.zero,
+                            visualDensity: VisualDensity.compact,
+                          ),
                           icon: const Icon(Icons.download_outlined),
                           onPressed: () {
                             PicDownloadModule.instance.enqueueDownloadSet(

@@ -54,14 +54,9 @@ class _HomePageState extends State<HomePage> {
     print('Tap HomeEntry -> title: ${entry.title}, url: ${entry.url}');
     final selectedHost = _selectedHost ?? PicNetService.instance.selectedHost;
 
-    Navigator.of(
-      context,
-    ).push(
+    Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => TagGalleryPage(
-          entry: entry,
-          host: selectedHost,
-        ),
+        builder: (_) => TagGalleryPage(entry: entry, host: selectedHost),
       ),
     );
   }

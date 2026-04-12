@@ -5,6 +5,8 @@ import 'package:pic_data/models/pic_content.dart';
 import 'package:pic_data/models/pic_net_models.dart';
 import 'package:pic_data/services/pic_detail_page_loader.dart';
 import 'package:pic_data/services/pic_download_module.dart';
+import 'package:pic_data/services/pic_set_download_record_store.dart';
+import 'package:pic_data/utils/pic_content_download_flags.dart';
 import 'pic_content_grid.dart';
 import 'package:pic_data/debug/page_backdoor.dart';
 
@@ -364,26 +366,37 @@ class _PicDetailPageState extends State<PicDetailPage> {
                             vertical: 8,
                           ),
                           children: [
-                            PicContentGrid(
-                              contents: _suggestions,
-                              headers: _imageHeaders,
-                              itemWidth: 140,
-                              padding: EdgeInsets.zero,
-                              enableHover: false,
-                              onDownloadTap: _enqueueDownloadSet,
-                              onItemTap: (item) {
-                                // ignore: avoid_print
-                                print(
-                                  'Tap suggestion -> title="${item.title}", href="${item.href}"',
+                            ListenableBuilder(
+                              listenable: PicSetDownloadRecordStore.instance,
+                              builder: (BuildContext context, Widget? _) {
+                                final List<PicContent> flagged =
+                                    applyCompletedDownloadFlagsToContents(
+                                  _suggestions,
+                                  PicSetDownloadRecordStore
+                                      .instance.completedContentHrefSet,
                                 );
-                                if (item.href.isEmpty) return;
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => PicDetailPage(
-                                      content: item,
-                                      host: widget.host,
-                                    ),
-                                  ),
+                                return PicContentGrid(
+                                  contents: flagged,
+                                  headers: _imageHeaders,
+                                  itemWidth: 140,
+                                  padding: EdgeInsets.zero,
+                                  enableHover: false,
+                                  onDownloadTap: _enqueueDownloadSet,
+                                  onItemTap: (item) {
+                                    // ignore: avoid_print
+                                    print(
+                                      'Tap suggestion -> title="${item.title}", href="${item.href}"',
+                                    );
+                                    if (item.href.isEmpty) return;
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => PicDetailPage(
+                                          content: item,
+                                          host: widget.host,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 );
                               },
                             ),

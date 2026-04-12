@@ -56,6 +56,16 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
   List<PicSetDownloadRecord> get records =>
       List<PicSetDownloadRecord>.unmodifiable(_records);
 
+  /// 已成功下载完成的套图详情页 [href]，与列表里 [PicContent.href] 对齐。
+  Set<String> get completedContentHrefSet {
+    return _records
+        .where((PicSetDownloadRecord r) =>
+            r.status == PicSetDownloadTaskStatus.completed)
+        .map((PicSetDownloadRecord r) => r.contentHref)
+        .where((String h) => h.isNotEmpty)
+        .toSet();
+  }
+
   PicSetDownloadRecord? tryGet(String taskId) {
     for (final PicSetDownloadRecord r in _records) {
       if (r.id == taskId) {

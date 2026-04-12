@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import 'package:pic_data/utils/gallery_grid_layout.dart';
+
 /// 套图列表风格缩略图：网络图 + 占位；与 [TagGalleryPage] 网格 cell 上图区域一致。
 class GalleryListThumbnail extends StatelessWidget {
   const GalleryListThumbnail({
@@ -19,7 +21,7 @@ class GalleryListThumbnail extends StatelessWidget {
     final theme = Theme.of(context);
 
     if (imageUrl.isEmpty) {
-      return _buildPlaceholder(theme);
+      return _buildPlaceholder(theme, context);
     }
 
     return ClipRRect(
@@ -27,7 +29,7 @@ class GalleryListThumbnail extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          _buildPlaceholder(theme),
+          _buildPlaceholder(theme, context),
           CachedNetworkImage(
             imageUrl: imageUrl,
             httpHeaders: headers,
@@ -40,7 +42,8 @@ class GalleryListThumbnail extends StatelessWidget {
     );
   }
 
-  Widget _buildPlaceholder(ThemeData theme) {
+  Widget _buildPlaceholder(ThemeData theme, BuildContext context) {
+    final compact = isCompactGalleryGrid(context);
     final bgColor = theme.colorScheme.surfaceContainerHighest.withValues(
       alpha: 0.6,
     );
@@ -63,15 +66,16 @@ class GalleryListThumbnail extends StatelessWidget {
           children: [
             Icon(
               Icons.collections_outlined,
-              size: 32,
+              size: compact ? 22 : 32,
               color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: compact ? 4 : 6),
             Text(
               '套图',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                letterSpacing: 1.2,
+                letterSpacing: compact ? 0.8 : 1.2,
+                fontSize: compact ? 10 : null,
               ),
             ),
           ],
