@@ -419,22 +419,6 @@ class _TagGalleryItem extends StatefulWidget {
 class _TagGalleryItemState extends State<_TagGalleryItem>
     with AutomaticKeepAliveClientMixin<_TagGalleryItem> {
   bool _isHovered = false;
-  bool _isDownloaded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _isDownloaded = widget.item.isDownloaded ?? false;
-  }
-
-  @override
-  void didUpdateWidget(covariant _TagGalleryItem oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.item.href != oldWidget.item.href ||
-        widget.item.isDownloaded != oldWidget.item.isDownloaded) {
-      _isDownloaded = widget.item.isDownloaded ?? false;
-    }
-  }
 
   @override
   bool get wantKeepAlive => true;
@@ -445,7 +429,14 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
     final item = widget.item;
     final headers = widget.headers;
 
-    return MouseRegion(
+    return ListenableBuilder(
+      listenable: PicSetDownloadRecordStore.instance,
+      builder: (BuildContext context, Widget? _) {
+        final bool inDownloadList = item.href.isNotEmpty &&
+            PicSetDownloadRecordStore.instance.trackedContentHrefSet
+                .contains(item.href);
+
+        return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) {
         setState(() => _isHovered = true);
@@ -537,12 +528,12 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
                           ),
                         ),
                       ),
-                      if (!_isDownloaded)
+                      if (!inDownloadList)
                         IconButton(
                           tooltip: '下载',
                           iconSize: galleryGridDownloadIconSize(context),
                           splashRadius:
-                              isCompactGalleryGrid(context) ? 12 : 18,
+                              isCompactGalleryGrid(context) ? 20 : 31,
                           style: IconButton.styleFrom(
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             minimumSize: Size.zero,
@@ -559,11 +550,6 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
                               context,
                               '已加入下载队列，后台解析并保存到下载目录',
                             );
-                            if (!_isDownloaded) {
-                              setState(() {
-                                _isDownloaded = true;
-                              });
-                            }
                           },
                         ),
                     ],
@@ -574,6 +560,8 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
           ),
         ),
       ),
+    );
+      },
     );
   }
 }

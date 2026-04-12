@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:pic_data/models/pic_content.dart';
+import 'package:pic_data/services/pic_set_download_record_store.dart';
 import 'package:pic_data/utils/gallery_grid_layout.dart';
 
 /// 通用的套图网格组件。
@@ -150,22 +151,6 @@ class _PicContentGridItem extends StatefulWidget {
 class _PicContentGridItemState extends State<_PicContentGridItem>
     with AutomaticKeepAliveClientMixin<_PicContentGridItem> {
   bool _isHovered = false;
-  bool _isDownloaded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _isDownloaded = widget.item.isDownloaded ?? false;
-  }
-
-  @override
-  void didUpdateWidget(covariant _PicContentGridItem oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.item.href != oldWidget.item.href ||
-        widget.item.isDownloaded != oldWidget.item.isDownloaded) {
-      _isDownloaded = widget.item.isDownloaded ?? false;
-    }
-  }
 
   @override
   bool get wantKeepAlive => true;
@@ -182,7 +167,14 @@ class _PicContentGridItemState extends State<_PicContentGridItem>
     final titleSize = galleryGridTitleFontSize(context);
     final dlIcon = galleryGridDownloadIconSize(context);
 
-    final card = Card(
+    return ListenableBuilder(
+      listenable: PicSetDownloadRecordStore.instance,
+      builder: (BuildContext context, Widget? _) {
+        final bool inDownloadList = item.href.isNotEmpty &&
+            PicSetDownloadRecordStore.instance.trackedContentHrefSet
+                .contains(item.href);
+
+        final card = Card(
       elevation: enableHover && _isHovered ? 8 : 2,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -217,11 +209,11 @@ class _PicContentGridItemState extends State<_PicContentGridItem>
                       ),
                     ),
                   ),
-                  if (showDownloadButton && !_isDownloaded)
+                  if (showDownloadButton && !inDownloadList)
                     IconButton(
                       tooltip: '下载',
                       iconSize: dlIcon,
-                      splashRadius: isCompactGalleryGrid(context) ? 12 : 18,
+                      splashRadius: isCompactGalleryGrid(context) ? 20 : 31,
                       style: IconButton.styleFrom(
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         minimumSize: Size.zero,
@@ -231,11 +223,6 @@ class _PicContentGridItemState extends State<_PicContentGridItem>
                       icon: const Icon(Icons.download_outlined),
                       onPressed: () {
                         widget.onDownloadTap?.call(item);
-                        if (widget.onDownloadTap != null && !_isDownloaded) {
-                          setState(() {
-                            _isDownloaded = true;
-                          });
-                        }
                       },
                     ),
                 ],
@@ -244,48 +231,50 @@ class _PicContentGridItemState extends State<_PicContentGridItem>
           ],
         ),
       ),
-    );
+        );
 
-    if (!enableHover) {
-      return card;
-    }
+        if (!enableHover) {
+          return card;
+        }
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) {
-        setState(() => _isHovered = true);
+        return MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) {
+            setState(() => _isHovered = true);
+          },
+          onExit: (_) {
+            setState(() => _isHovered = false);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            transform: _isHovered
+                ? (Matrix4.identity()..scale(1.02))
+                : Matrix4.identity(),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: _isHovered
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.16),
+                        blurRadius: 18,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 10),
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 10,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+            ),
+            child: card,
+          ),
+        );
       },
-      onExit: (_) {
-        setState(() => _isHovered = false);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOut,
-        transform: _isHovered
-            ? (Matrix4.identity()..scale(1.02))
-            : Matrix4.identity(),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: _isHovered
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.16),
-                    blurRadius: 18,
-                    spreadRadius: 1,
-                    offset: const Offset(0, 10),
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 10,
-                    spreadRadius: 0,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-        ),
-        child: card,
-      ),
     );
   }
 }

@@ -66,6 +66,15 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
         .toSet();
   }
 
+  /// 下载列表中仍保留记录的 [contentHref]（排队中 / 进行中 / 已完成 / 失败），
+  /// 与 [PicContent.href] 对齐；用于隐藏「再次加入队列」的下载按钮。
+  Set<String> get trackedContentHrefSet {
+    return _records
+        .map((PicSetDownloadRecord r) => r.contentHref)
+        .where((String h) => h.isNotEmpty)
+        .toSet();
+  }
+
   PicSetDownloadRecord? tryGet(String taskId) {
     for (final PicSetDownloadRecord r in _records) {
       if (r.id == taskId) {

@@ -266,10 +266,21 @@ class _PicDetailPageState extends State<PicDetailPage> {
                   },
             child: const Text('下一页'),
           ),
-        IconButton(
-          tooltip: '下载整套到本机（队列）',
-          onPressed: _isLoading ? null : _onTapDownloadSet,
-          icon: const Icon(Icons.download_outlined),
+        ListenableBuilder(
+          listenable: PicSetDownloadRecordStore.instance,
+          builder: (BuildContext context, Widget? _) {
+            final bool inDownloadList = widget.content.href.isNotEmpty &&
+                PicSetDownloadRecordStore.instance.trackedContentHrefSet
+                    .contains(widget.content.href);
+            if (inDownloadList) {
+              return const SizedBox.shrink();
+            }
+            return IconButton(
+              tooltip: '下载整套到本机（队列）',
+              onPressed: _isLoading ? null : _onTapDownloadSet,
+              icon: const Icon(Icons.download_outlined),
+            );
+          },
         ),
       ],
     );

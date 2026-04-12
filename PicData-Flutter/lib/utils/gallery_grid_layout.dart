@@ -35,5 +35,5 @@ double galleryGridTitleFontSize(BuildContext context) {
 
 /// 下载按钮图标逻辑大小（[IconButton.iconSize]）。
 double galleryGridDownloadIconSize(BuildContext context) {
-  return isCompactGalleryGrid(context) ? 16.0 : 20.0;
+  return isCompactGalleryGrid(context) ? 27.2 : 34.0;
 }

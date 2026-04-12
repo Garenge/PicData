@@ -13,11 +13,24 @@ import 'package:pic_data/debug/page_backdoor.dart';
 
 const String _logPath = 'PicData-Flutter/lib/pages/files/local_image_gallery_page.dart';
 
+/// 桌面端：系统长按方向键产生的 [KeyRepeatEvent] 两次触发翻页的最小间隔。
+const Duration _kDesktopGalleryArrowRepeatThrottle = Duration(milliseconds: 110);
+
+/// 桌面端：触摸板/鼠标水平轻扫翻页动画时长（键盘翻页使用 [PageController.jumpToPage] 无此动画）。
+const int _kGalleryDragPageTurnMs = 150;
+
+/// 桌面端：⌘/Ctrl + 方向键跳到首张/末张时的动画时长（略短以减轻眩晕感）。
+const int _kGalleryJumpEndAnimationMs = 95;
+
+/// 手机端：竖直拖动关闭全屏预览的累计位移阈值（px，取绝对值）。
+/// [SwipeImageGallery] 在横向 [PageView] 下用竖直拖动手势，**上滑、下滑**均可退出；略低于包默认值以便退出更省力。
+const int _kSwipeGalleryDismissDragDistance = 80;
+
 /// 手机端使用 [SwipeImageGallery]（[InteractiveViewer] + **竖直拖动关闭**）；桌面端仍用 [LocalImageGalleryPage] + [photo_view]。
 bool get localImageGalleryUseSwipeDialog =>
     !kIsWeb && (Platform.isIOS || Platform.isAndroid);
 
-/// 本地文件全屏预览：左右滑切图、双指缩放、双击缩放、**下滑拖动超过阈值即关闭**（与 [PageView] 横向滚动不冲突）。
+/// 本地文件全屏预览：左右滑切图、双指缩放、双击缩放、**竖直拖动（上/下）超过阈值即关闭**（与 [PageView] 横向滚动不冲突）。
 Future<void> showLocalSwipeImageGallery(
   BuildContext context, {
   required List<String> imagePaths,
@@ -36,7 +49,7 @@ Future<void> showLocalSwipeImageGallery(
       context: context,
       itemCount: n,
       initialIndex: safe,
-      dismissDragDistance: 100,
+      dismissDragDistance: _kSwipeGalleryDismissDragDistance,
       hideOverlayOnTap: false,
       itemBuilder: (BuildContext ctx, int index) {
         final String path = imagePaths[index];
@@ -243,6 +256,7 @@ class _LocalImageGalleryPageState extends State<LocalImageGalleryPage> {
   double? _baseScale;
   double? _currentScale;
   double _dragDeltaX = 0;
+  DateTime? _lastArrowGalleryStepAt;
 
   @override
   void initState() {
@@ -291,58 +305,120 @@ class _LocalImageGalleryPageState extends State<LocalImageGalleryPage> {
     return '${(bytes / gb).toStringAsFixed(1)} GB';
   }
 
-  Future<void> _goToPrev() async {
+  Future<void> _goToPrev({bool instant = false}) async {
     if (_currentIndex <= 0) {
       return;
     }
+    final int target = _currentIndex - 1;
+    if (instant) {
+      _pageController.jumpToPage(target);
+      return;
+    }
     await _pageController.previousPage(
-      duration: const Duration(milliseconds: 180),
+      duration: const Duration(milliseconds: _kGalleryDragPageTurnMs),
       curve: Curves.easeOut,
     );
   }
 
-  Future<void> _goToNext() async {
+  Future<void> _goToNext({bool instant = false}) async {
     if (_currentIndex >= widget.imagePaths.length - 1) {
       return;
     }
+    final int target = _currentIndex + 1;
+    if (instant) {
+      _pageController.jumpToPage(target);
+      return;
+    }
     await _pageController.nextPage(
-      duration: const Duration(milliseconds: 180),
+      duration: const Duration(milliseconds: _kGalleryDragPageTurnMs),
       curve: Curves.easeOut,
     );
   }
 
   KeyEventResult _handleKeyEvent(KeyEvent event) {
-    if (event is! KeyDownEvent) {
-      return KeyEventResult.ignored;
-    }
-    final key = event.logicalKey;
+    final LogicalKeyboardKey key = event.logicalKey;
     final bool isCommandPressed =
         HardwareKeyboard.instance.isMetaPressed ||
         HardwareKeyboard.instance.isControlPressed;
-    if (event.logicalKey == LogicalKeyboardKey.arrowLeft && isCommandPressed) {
+
+    // 仅处理按下与系统长按重复，避免误吞其它按键阶段。
+    final bool isArrowStep =
+        key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight;
+    if (!isArrowStep) {
+      if (event is! KeyDownEvent) {
+        return KeyEventResult.ignored;
+      }
+    } else {
+      if (event is KeyUpEvent) {
+        return KeyEventResult.ignored;
+      }
+      if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+        return KeyEventResult.ignored;
+      }
+    }
+
+    if (key == LogicalKeyboardKey.arrowLeft && isCommandPressed) {
+      if (event is! KeyDownEvent) {
+        return KeyEventResult.handled;
+      }
       _pageController.animateToPage(
         0,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
+        duration: const Duration(milliseconds: _kGalleryJumpEndAnimationMs),
+        curve: Curves.easeOutCubic,
       );
       return KeyEventResult.handled;
     }
-    if (event.logicalKey == LogicalKeyboardKey.arrowRight && isCommandPressed) {
+    if (key == LogicalKeyboardKey.arrowRight && isCommandPressed) {
+      if (event is! KeyDownEvent) {
+        return KeyEventResult.handled;
+      }
       _pageController.animateToPage(
         widget.imagePaths.length - 1,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
+        duration: const Duration(milliseconds: _kGalleryJumpEndAnimationMs),
+        curve: Curves.easeOutCubic,
       );
       return KeyEventResult.handled;
     }
 
     if (key == LogicalKeyboardKey.arrowLeft) {
-      _goToPrev();
+      if (!_isAtBaseScaleOrUnknown) {
+        return KeyEventResult.handled;
+      }
+      if (event is KeyRepeatEvent) {
+        final DateTime now = DateTime.now();
+        final DateTime? last = _lastArrowGalleryStepAt;
+        if (last != null &&
+            now.difference(last) < _kDesktopGalleryArrowRepeatThrottle) {
+          return KeyEventResult.handled;
+        }
+        _lastArrowGalleryStepAt = now;
+      } else {
+        _lastArrowGalleryStepAt = DateTime.now();
+      }
+      _goToPrev(instant: true);
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.arrowRight) {
-      _goToNext();
+      if (!_isAtBaseScaleOrUnknown) {
+        return KeyEventResult.handled;
+      }
+      if (event is KeyRepeatEvent) {
+        final DateTime now = DateTime.now();
+        final DateTime? last = _lastArrowGalleryStepAt;
+        if (last != null &&
+            now.difference(last) < _kDesktopGalleryArrowRepeatThrottle) {
+          return KeyEventResult.handled;
+        }
+        _lastArrowGalleryStepAt = now;
+      } else {
+        _lastArrowGalleryStepAt = DateTime.now();
+      }
+      _goToNext(instant: true);
       return KeyEventResult.handled;
+    }
+
+    if (event is! KeyDownEvent) {
+      return KeyEventResult.ignored;
     }
     if (key == LogicalKeyboardKey.escape ||
         key == LogicalKeyboardKey.arrowUp ||
