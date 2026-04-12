@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:pic_data/debug/page_backdoor.dart';
 import 'package:pic_data/models/pic_set_download_record.dart';
+import 'package:pic_data/pages/downloads/all_failed_download_items_page.dart';
 import 'package:pic_data/pages/downloads/download_failed_items_page.dart';
 import 'package:pic_data/pages/files/open_download_record_local_folder.dart';
 import 'package:pic_data/services/download_file_service.dart';
@@ -170,6 +171,7 @@ class _DownloadsPageState extends State<DownloadsPage> {
                     status: PicSetDownloadTaskStatus.failed,
                     records: records,
                     crossAxisCount: crossAxisCount,
+                    titleTrailing: _failedSectionAllFailuresButton(context, records),
                   ),
                 ],
               );
@@ -181,12 +183,42 @@ class _DownloadsPageState extends State<DownloadsPage> {
   }
 }
 
+Widget? _failedSectionAllFailuresButton(
+  BuildContext context,
+  List<PicSetDownloadRecord> records,
+) {
+  final int totalFailures = records
+      .where(
+        (PicSetDownloadRecord r) =>
+            r.status == PicSetDownloadTaskStatus.failed,
+      )
+      .fold<int>(
+        0,
+        (int a, PicSetDownloadRecord r) => a + r.failureDetails.length,
+      );
+  if (totalFailures <= 0) {
+    return null;
+  }
+  return IconButton(
+    tooltip: '全部失败项（$totalFailures）',
+    icon: const Icon(Icons.view_list_outlined),
+    onPressed: () {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const AllFailedDownloadItemsPage(),
+        ),
+      );
+    },
+  );
+}
+
 class _DownloadStatusSection extends StatelessWidget {
   const _DownloadStatusSection({
     required this.title,
     required this.status,
     required this.records,
     required this.crossAxisCount,
+    this.titleTrailing,
   });
 
   final String title;
@@ -194,18 +226,46 @@ class _DownloadStatusSection extends StatelessWidget {
   final List<PicSetDownloadRecord> records;
   final int crossAxisCount;
 
+  /// 与 [ExpansionTile] 默认展开箭头同一行，位于箭头左侧（如「失败」汇总入口）。
+  final Widget? titleTrailing;
+
   @override
   Widget build(BuildContext context) {
     final double gridSpacing = galleryGridSpacing(context);
     final List<PicSetDownloadRecord> filtered = records
         .where((PicSetDownloadRecord r) => r.status == status)
         .toList();
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colorScheme = theme.colorScheme;
+    final String countLabel = '${filtered.length} 项';
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
-        title: Text(title),
-        subtitle: Text('${filtered.length} 项'),
+        title: titleTrailing == null
+            ? Text(title)
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Text(title, style: theme.textTheme.titleMedium),
+                        Text(
+                          countLabel,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  titleTrailing!,
+                ],
+              ),
+        subtitle: titleTrailing == null ? Text(countLabel) : null,
         children: [
           if (filtered.isEmpty)
             Padding(

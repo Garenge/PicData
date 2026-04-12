@@ -85,6 +85,19 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
     return null;
   }
 
+  /// 与 [trackedContentHrefSet] 同源：按详情/列表 [PicContent.href] 找当前仍保留的记录（任意状态）。
+  PicSetDownloadRecord? tryGetRecordByContentHref(String contentHref) {
+    if (contentHref.isEmpty) {
+      return null;
+    }
+    for (final PicSetDownloadRecord r in _records) {
+      if (r.contentHref == contentHref) {
+        return r;
+      }
+    }
+    return null;
+  }
+
   /// 从列表与 SQLite 中移除一条记录。
   ///
   /// [deleteLocalFiles] 为 `true` 时，同时删除 [PicSetDownloadRecord.localDirRelativeToApplicationDocuments]

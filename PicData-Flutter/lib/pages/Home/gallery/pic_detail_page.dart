@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 
 import 'package:pic_data/models/pic_content.dart';
 import 'package:pic_data/models/pic_net_models.dart';
+import 'package:pic_data/models/pic_set_download_record.dart';
 import 'package:pic_data/services/pic_detail_page_loader.dart';
 import 'package:pic_data/services/pic_download_module.dart';
 import 'package:pic_data/services/pic_set_download_record_store.dart';
 import 'package:pic_data/utils/pic_content_download_flags.dart';
 import 'pic_content_grid.dart';
 import 'package:pic_data/debug/page_backdoor.dart';
+import 'package:pic_data/pages/files/open_download_record_local_folder.dart';
 
 /// 套图详情页。
 ///
@@ -269,11 +271,27 @@ class _PicDetailPageState extends State<PicDetailPage> {
         ListenableBuilder(
           listenable: PicSetDownloadRecordStore.instance,
           builder: (BuildContext context, Widget? _) {
-            final bool inDownloadList = widget.content.href.isNotEmpty &&
+            final String entryHref = widget.content.href;
+            final bool inDownloadList = entryHref.isNotEmpty &&
                 PicSetDownloadRecordStore.instance.trackedContentHrefSet
-                    .contains(widget.content.href);
+                    .contains(entryHref);
             if (inDownloadList) {
-              return const SizedBox.shrink();
+              final PicSetDownloadRecord? downloadRecord =
+                  PicSetDownloadRecordStore.instance
+                      .tryGetRecordByContentHref(entryHref);
+              if (downloadRecord == null) {
+                return const SizedBox.shrink();
+              }
+              return IconButton(
+                tooltip: '打开本套图下载文件夹',
+                icon: const Icon(Icons.folder_open_outlined),
+                onPressed: () async {
+                  await pushFileBrowserForDownloadRecord(
+                    context,
+                    downloadRecord,
+                  );
+                },
+              );
             }
             return IconButton(
               tooltip: '下载整套到本机（队列）',
