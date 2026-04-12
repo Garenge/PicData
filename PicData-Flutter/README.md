@@ -43,28 +43,6 @@
 - 本地数据库设计：`lib/persistence/DATABASE_DESIGN.md`
 - iOS 启动图资源说明：`ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md`
 
-## 页面导航栏点击日志（PageBackdoor）
-
-- 触发时机：用户点击页面 `AppBar.title` 时触发。
-- 打印格式：`[PageBackdoor] class=<ClassName> file=<FilePath>`。
-- 生效环境：仅 Debug 模式生效（`kDebugMode == true`），Release 不打印。
-- 公共方法：`lib/debug/page_backdoor.dart` 中的 `debugPrintPageBackdoorInfo(...)`。
-- 新页面约定：所有新建页面都在导航栏标题加 `GestureDetector`，点击时调用该方法。
-
-示例（可直接复用）：
-
-```dart
-AppBar(
-  title: GestureDetector(
-    onTap: () => debugPrintPageBackdoorInfo(
-      className: 'SettingsPage',
-      filePath: 'PicData-Flutter/lib/pages/settings/settings_page.dart',
-    ),
-    child: const Text('设置'),
-  ),
-)
-```
-
 ## Getting Started
 
 This project is a starting point for a Flutter application.
