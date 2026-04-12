@@ -13,6 +13,9 @@ enum PicSetDownloadTaskStatus {
   /// 已开始处理（含分页解析与后续单图下载）。
   inProgress,
 
+  /// 用户从设置触发「暂停所有」后保留进度；需在下载页点「开始下载」继续。
+  paused,
+
   completed,
   failed,
 }
@@ -301,6 +304,19 @@ class PicSetDownloadRecord {
       content: toPicContent(),
       host: host.toLoosePicHost(),
       replaceExistingImageFiles: false,
+      recordRegistered: Completer<void>()..complete(),
+    );
+  }
+
+  /// 失败套图在 UI 触发「重新下载」：沿用同一 [id] 与库行，可选覆盖本地已存在图片。
+  PicSetDownloadQueueTask toRetryQueueTask({
+    bool replaceExistingImageFiles = true,
+  }) {
+    return PicSetDownloadQueueTask(
+      id: id,
+      content: toPicContent(),
+      host: host.toLoosePicHost(),
+      replaceExistingImageFiles: replaceExistingImageFiles,
       recordRegistered: Completer<void>()..complete(),
     );
   }

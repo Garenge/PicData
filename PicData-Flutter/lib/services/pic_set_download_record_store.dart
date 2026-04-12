@@ -21,7 +21,7 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
 
   final List<PicSetDownloadRecord> _records = <PicSetDownloadRecord>[];
 
-  /// 冷启动时 [main] 在 [PicDatabase.init] 之后调用：从 SQLite 载入，并将非已完成/失败记录重置为 [PicSetDownloadTaskStatus.queued] 后写回库。
+  /// 冷启动时 [main] 在 [PicDatabase.init] 之后调用：从 SQLite 载入，并将非已完成/失败/已暂停记录重置为 [PicSetDownloadTaskStatus.queued] 后写回库。
   Future<void> loadFromDatabaseOnStartup() async {
     final List<PicSetDownloadRecord> list = await PicDatabase
         .instance
@@ -31,7 +31,8 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
     for (final PicSetDownloadRecord r in list) {
       PicSetDownloadRecord row = r;
       if (r.status != PicSetDownloadTaskStatus.completed &&
-          r.status != PicSetDownloadTaskStatus.failed) {
+          r.status != PicSetDownloadTaskStatus.failed &&
+          r.status != PicSetDownloadTaskStatus.paused) {
         row = r.resetToQueuedPreservingIdentity();
         await PicDatabase.instance.downloadRecords.upsert(row);
       }
@@ -256,6 +257,41 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
         lastErrorMessage: message,
       );
     });
+  }
+
+  /// 用户「暂停所有下载」：保留当前进度，停止继续拉取。
+  void markPaused(String taskId) {
+    _replace(taskId, (PicSetDownloadRecord r) {
+      return r.copyWith(status: PicSetDownloadTaskStatus.paused);
+    });
+  }
+
+  /// 将 [failed] 记录重置为 [PicSetDownloadTaskStatus.queued] 并写库，供 [PicDownloadModule] 整套重新解析与下载。
+  Future<void> resetFailedRecordToQueuedForRetry(String taskId) async {
+    final int i = _records.indexWhere(
+      (PicSetDownloadRecord r) => r.id == taskId,
+    );
+    if (i < 0) {
+      return;
+    }
+    final PicSetDownloadRecord r = _records[i];
+    if (r.status != PicSetDownloadTaskStatus.failed) {
+      return;
+    }
+    final PicSetDownloadRecord next = r.resetToQueuedPreservingIdentity();
+    try {
+      await PicDatabase.instance.downloadRecords.upsert(next);
+    } catch (e, st) {
+      // ignore: avoid_print
+      print(
+        '$_logStore#resetFailedRecordToQueuedForRetry: upsert failed id=$taskId error=$e',
+      );
+      // ignore: avoid_print
+      print('  stack=$st');
+      rethrow;
+    }
+    _records[i] = next;
+    notifyListeners();
   }
 
   void applyFailureRetryResult(

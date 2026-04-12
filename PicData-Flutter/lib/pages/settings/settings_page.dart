@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:pic_data/debug/page_backdoor.dart';
 import 'package:pic_data/services/download_file_service.dart';
+import 'package:pic_data/services/pic_download_module.dart';
 import 'package:pic_data/services/proxy_settings_service.dart';
 
 /// 大屏（尤其 macOS）上避免 AlertDialog 默认过宽，保持表单比例紧凑。
@@ -43,6 +44,11 @@ class _SettingsPageState extends State<SettingsPage> {
         title: '网络代理',
         subtitle: _proxySubtitle(),
         onTap: _saving ? null : _showProxyEditorDialog,
+      ),
+      _SettingItem(
+        title: '一键暂停所有下载',
+        subtitle: '未开始的排队任务保留；进行中的在当前进度暂停，请在「下载」页点「开始下载」继续',
+        onTap: _saving ? null : _confirmPauseAllDownloads,
       ),
     ];
   }
@@ -289,6 +295,42 @@ class _SettingsPageState extends State<SettingsPage> {
           ],
         );
       },
+    );
+  }
+
+  Future<void> _confirmPauseAllDownloads() async {
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          constraints: _kSettingsDialogConstraints,
+          title: const Text('暂停所有下载'),
+          content: const Text(
+            '确定暂停所有下载任务？进行中的会在当前进度暂停；仅排队尚未开始的会保留在列表里。',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('暂停'),
+            ),
+          ],
+        );
+      },
+    );
+    if (ok != true || !mounted) {
+      return;
+    }
+    PicDownloadModule.instance.pauseAllDownloads();
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('已暂停所有下载，可在「下载」页恢复')),
     );
   }
 

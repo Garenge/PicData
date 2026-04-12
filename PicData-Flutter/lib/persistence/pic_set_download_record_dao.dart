@@ -192,6 +192,8 @@ CREATE TABLE $tableName (
         return 2;
       case PicSetDownloadTaskStatus.failed:
         return 3;
+      case PicSetDownloadTaskStatus.paused:
+        return 4;
     }
   }
 
@@ -205,6 +207,8 @@ CREATE TABLE $tableName (
         return PicSetDownloadTaskStatus.completed;
       case 3:
         return PicSetDownloadTaskStatus.failed;
+      case 4:
+        return PicSetDownloadTaskStatus.paused;
       default:
         return PicSetDownloadTaskStatus.queued;
     }

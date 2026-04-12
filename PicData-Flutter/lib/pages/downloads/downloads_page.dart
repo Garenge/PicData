@@ -6,6 +6,7 @@ import 'package:pic_data/pages/downloads/download_failed_items_page.dart';
 import 'package:pic_data/pages/files/open_download_record_local_folder.dart';
 import 'package:pic_data/services/download_file_service.dart';
 import 'package:pic_data/services/open_local_folder.dart';
+import 'package:pic_data/services/pic_download_module.dart';
 import 'package:pic_data/services/pic_set_download_record_store.dart';
 import 'package:pic_data/utils/gallery_grid_layout.dart';
 import 'package:pic_data/widgets/gallery_list_thumbnail.dart';
@@ -41,6 +42,17 @@ class _DownloadsPageState extends State<DownloadsPage> {
     await PicSetDownloadRecordStore.instance.syncImageProgressFromDisk();
   }
 
+  void _resumeDownloadsFromPause() {
+    PicDownloadModule.instance.resumeDownloadsAfterUserPause();
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('已开始下载')),
+    );
+  }
+
   Future<void> _openDownloadsRootInSystem(BuildContext context) async {
     final path = await DownloadFileService.instance.getRootPath();
     if (!context.mounted) {
@@ -60,36 +72,49 @@ class _DownloadsPageState extends State<DownloadsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: GestureDetector(
-          onTap: () => debugPrintPageBackdoorInfo(
-            className: 'DownloadsPage',
-            filePath: 'PicData-Flutter/lib/pages/downloads/downloads_page.dart',
+    return ListenableBuilder(
+      listenable: Listenable.merge(<Listenable>[
+        PicSetDownloadRecordStore.instance,
+        PicDownloadModule.instance.globalPauseNotifier,
+      ]),
+      builder: (BuildContext context, Widget? _) {
+        final List<PicSetDownloadRecord> records =
+            PicSetDownloadRecordStore.instance.records;
+        final bool showResumeControl = PicDownloadModule.instance.isGloballyPaused ||
+            records.any(
+              (PicSetDownloadRecord r) =>
+                  r.status == PicSetDownloadTaskStatus.paused,
+            );
+        return Scaffold(
+          appBar: AppBar(
+            title: GestureDetector(
+              onTap: () => debugPrintPageBackdoorInfo(
+                className: 'DownloadsPage',
+                filePath: 'PicData-Flutter/lib/pages/downloads/downloads_page.dart',
+              ),
+              child: const Text('下载'),
+            ),
+            actions: [
+              if (showResumeControl)
+                TextButton(
+                  onPressed: _resumeDownloadsFromPause,
+                  child: const Text('开始下载'),
+                ),
+              IconButton(
+                tooltip: '刷新进度',
+                icon: const Icon(Icons.refresh),
+                onPressed: _refreshProgress,
+              ),
+              IconButton(
+                tooltip: supportsOpenLocalFolderInSystem
+                    ? '打开下载文件夹'
+                    : '打开本地文件夹（仅桌面系统）',
+                icon: const Icon(Icons.folder_open_outlined),
+                onPressed: () => _openDownloadsRootInSystem(context),
+              ),
+            ],
           ),
-          child: const Text('下载'),
-        ),
-        actions: [
-          IconButton(
-            tooltip: '刷新进度',
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshProgress,
-          ),
-          IconButton(
-            tooltip: supportsOpenLocalFolderInSystem
-                ? '打开下载文件夹'
-                : '打开本地文件夹（仅桌面系统）',
-            icon: const Icon(Icons.folder_open_outlined),
-            onPressed: () => _openDownloadsRootInSystem(context),
-          ),
-        ],
-      ),
-      body: ListenableBuilder(
-        listenable: PicSetDownloadRecordStore.instance,
-        builder: (BuildContext context, Widget? _) {
-          final List<PicSetDownloadRecord> records =
-              PicSetDownloadRecordStore.instance.records;
-          return LayoutBuilder(
+          body: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
               final int crossAxisCount =
                   _DownloadsPageState._crossAxisCountForLayout(
@@ -123,6 +148,12 @@ class _DownloadsPageState extends State<DownloadsPage> {
                     crossAxisCount: crossAxisCount,
                   ),
                   _DownloadStatusSection(
+                    title: '已暂停',
+                    status: PicSetDownloadTaskStatus.paused,
+                    records: records,
+                    crossAxisCount: crossAxisCount,
+                  ),
+                  _DownloadStatusSection(
                     title: '进行中',
                     status: PicSetDownloadTaskStatus.inProgress,
                     records: records,
@@ -143,9 +174,9 @@ class _DownloadsPageState extends State<DownloadsPage> {
                 ],
               );
             },
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -377,18 +408,31 @@ Future<void> _showDownloadRecordContextMenu(
     Rect.fromLTWH(globalPosition.dx, globalPosition.dy, 1, 1),
     Offset.zero & overlay.size,
   );
+  final List<PopupMenuEntry<String>> menuItems = <PopupMenuEntry<String>>[
+    if (record.status == PicSetDownloadTaskStatus.failed)
+      const PopupMenuItem<String>(
+        value: 'retry_download',
+        child: Text('重新下载（覆盖已存在文件）'),
+      ),
+    const PopupMenuItem<String>(
+      value: 'delete_record',
+      child: Text('删除记录（保留文件）'),
+    ),
+    const PopupMenuItem<String>(
+      value: 'delete_record_and_files',
+      child: Text('删除记录和本地文件'),
+    ),
+  ];
   final String? action = await showMenu<String>(
     context: context,
     position: position,
-    items: const <PopupMenuEntry<String>>[
-      PopupMenuItem<String>(value: 'delete_record', child: Text('删除记录（保留文件）')),
-      PopupMenuItem<String>(
-        value: 'delete_record_and_files',
-        child: Text('删除记录和本地文件'),
-      ),
-    ],
+    items: menuItems,
   );
   if (!context.mounted) {
+    return;
+  }
+  if (action == 'retry_download') {
+    await _retryFailedSetDownloadFromMenu(context, record);
     return;
   }
   if (action == 'delete_record') {
@@ -401,6 +445,37 @@ Future<void> _showDownloadRecordContextMenu(
   }
   if (action == 'delete_record_and_files') {
     await _confirmRemoveDownloadRecord(context, record, deleteLocalFiles: true);
+  }
+}
+
+Future<void> _retryFailedSetDownloadFromMenu(
+  BuildContext context,
+  PicSetDownloadRecord record,
+) async {
+  try {
+    await PicDownloadModule.instance.retryFailedSetDownload(
+      record,
+      replaceExistingImageFiles: true,
+    );
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('已开始重新下载（已存在文件将被覆盖）')),
+    );
+  } catch (e, st) {
+    // ignore: avoid_print
+    print(
+      'PicData-Flutter/lib/pages/downloads/downloads_page.dart#'
+      '_retryFailedSetDownloadFromMenu: failed: $e',
+    );
+    // ignore: avoid_print
+    print('  stack=$st');
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('重新下载失败：$e')));
+    }
   }
 }
 
@@ -468,6 +543,16 @@ Widget? _downloadRecordProgressBar(
     case PicSetDownloadTaskStatus.queued:
     case PicSetDownloadTaskStatus.completed:
       return null;
+    case PicSetDownloadTaskStatus.paused:
+      if (!p.parseFinished) {
+        return null;
+      }
+      final int? pausedTotal = p.plannedImageTotal;
+      if (pausedTotal == null || pausedTotal <= 0) {
+        return null;
+      }
+      final double pv = (p.imageJobsFinished / pausedTotal).clamp(0.0, 1.0);
+      return _downloadLinearBar(context, value: pv, color: cs.outline);
     case PicSetDownloadTaskStatus.failed:
       final int? total = p.plannedImageTotal;
       if (!p.parseFinished || total == null || total <= 0) {
@@ -523,6 +608,14 @@ String _statusDetail(PicSetDownloadRecord record) {
   switch (record.status) {
     case PicSetDownloadTaskStatus.queued:
       return '排队中';
+    case PicSetDownloadTaskStatus.paused:
+      if (!p.parseFinished) {
+        return '已暂停 · 解析 ${p.parsePagesLoaded} 页';
+      }
+      final int pt = p.plannedImageTotal ?? 0;
+      return pt > 0
+          ? '已暂停 · 进度 ${p.imageJobsFinished}/$pt'
+          : '已暂停';
     case PicSetDownloadTaskStatus.inProgress:
       if (!p.parseFinished) {
         return '解析 ${p.parsePagesLoaded} 页 · 已发现 ${p.parseUniqueImagesSoFar} 张';
