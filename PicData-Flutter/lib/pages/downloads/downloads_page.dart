@@ -7,6 +7,7 @@ import 'package:pic_data/pages/files/open_download_record_local_folder.dart';
 import 'package:pic_data/services/download_file_service.dart';
 import 'package:pic_data/services/open_local_folder.dart';
 import 'package:pic_data/services/pic_set_download_record_store.dart';
+import 'package:pic_data/utils/gallery_grid_layout.dart';
 import 'package:pic_data/widgets/gallery_list_thumbnail.dart';
 
 class DownloadsPage extends StatefulWidget {
@@ -48,7 +49,10 @@ class _DownloadsPageState extends State<DownloadsPage> {
     await openLocalFolderInSystem(context, path);
   }
 
-  static int _crossAxisCountForWidth(double maxWidth) {
+  static int _crossAxisCountForLayout(BuildContext context, double maxWidth) {
+    if (isCompactGalleryGrid(context)) {
+      return 3;
+    }
     const double itemWidth = 180;
     const double spacing = 12;
     return (maxWidth / (itemWidth + spacing)).floor().clamp(1, 6);
@@ -88,15 +92,22 @@ class _DownloadsPageState extends State<DownloadsPage> {
           return LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
               final int crossAxisCount =
-                  _DownloadsPageState._crossAxisCountForWidth(
+                  _DownloadsPageState._crossAxisCountForLayout(
+                    context,
                     constraints.maxWidth,
                   );
+              final compact = isCompactGalleryGrid(context);
               return ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
                   if (records.isEmpty)
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                      padding: EdgeInsets.fromLTRB(
+                        compact ? 8 : 16,
+                        4,
+                        compact ? 8 : 16,
+                        12,
+                      ),
                       child: Text(
                         '暂无下载记录',
                         style: TextStyle(
@@ -154,6 +165,7 @@ class _DownloadStatusSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double gridSpacing = galleryGridSpacing(context);
     final List<PicSetDownloadRecord> filtered = records
         .where((PicSetDownloadRecord r) => r.status == status)
         .toList();
@@ -166,7 +178,12 @@ class _DownloadStatusSection extends StatelessWidget {
         children: [
           if (filtered.isEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: EdgeInsets.fromLTRB(
+                isCompactGalleryGrid(context) ? 8 : 16,
+                0,
+                isCompactGalleryGrid(context) ? 8 : 16,
+                16,
+              ),
               child: Text(
                 '无',
                 style: TextStyle(
@@ -183,8 +200,8 @@ class _DownloadStatusSection extends StatelessWidget {
                 itemCount: filtered.length,
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: crossAxisCount,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
+                  mainAxisSpacing: gridSpacing,
+                  crossAxisSpacing: gridSpacing,
                   childAspectRatio: 3 / 4,
                 ),
                 itemBuilder: (BuildContext context, int index) {

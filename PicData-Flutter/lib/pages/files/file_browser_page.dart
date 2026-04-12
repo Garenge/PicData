@@ -9,6 +9,7 @@ import 'package:pic_data/pages/files/text_file_preview_page.dart';
 import 'package:pic_data/pages/files/files_tab_refresh_scope.dart';
 import 'package:pic_data/services/open_local_folder.dart';
 import 'package:pic_data/utils/filename_natural_compare.dart';
+import 'package:pic_data/utils/gallery_grid_layout.dart';
 
 class FileBrowserPage extends StatefulWidget {
   const FileBrowserPage({
@@ -29,7 +30,7 @@ class FileBrowserPageState extends State<FileBrowserPage> {
   String? _errorMessage;
   List<FileSystemEntity> _entries = <FileSystemEntity>[];
   FilesTabRefreshScopeState? _filesTabRefreshHost;
-  static const double _gridSpacing = 12;
+  static const double _desktopGridSpacing = 12;
   static const double _targetItemWidth = 180;
   static const double _minItemWidth = 160;
   static const int _maxColumns = 6;
@@ -174,11 +175,20 @@ class FileBrowserPageState extends State<FileBrowserPage> {
       return;
     }
     final int initial = paths.indexOf(tapped.path);
+    final int initialIndex = initial >= 0 ? initial : 0;
+    if (localImageGalleryUseSwipeDialog) {
+      showLocalSwipeImageGallery(
+        context,
+        imagePaths: paths,
+        initialIndex: initialIndex,
+      );
+      return;
+    }
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (BuildContext context) => LocalImageGalleryPage(
           imagePaths: paths,
-          initialIndex: initial >= 0 ? initial : 0,
+          initialIndex: initialIndex,
         ),
       ),
     );
@@ -385,21 +395,30 @@ class FileBrowserPageState extends State<FileBrowserPage> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth;
-        final columns = (maxWidth / (_targetItemWidth + _gridSpacing))
-            .floor()
-            .clamp(1, _maxColumns);
-        final gridWidth =
-            columns * (_targetItemWidth + _gridSpacing) - _gridSpacing;
+        final compact = isCompactGalleryGrid(context);
+        final horizontalInset = fileBrowserHorizontalInset(context);
+        final maxWidth =
+            (constraints.maxWidth - 2 * horizontalInset).clamp(0.0, double.infinity).toDouble();
+        final gridSpacing = galleryGridSpacing(context);
+        final columns = compact
+            ? 3.clamp(1, _maxColumns)
+            : (maxWidth / (_targetItemWidth + _desktopGridSpacing))
+                  .floor()
+                  .clamp(1, _maxColumns);
+        final gridWidth = compact
+            ? columns * (_targetItemWidth + gridSpacing) - gridSpacing
+            : columns * (_targetItemWidth + _desktopGridSpacing) -
+                _desktopGridSpacing;
         final sidePadding = ((maxWidth - gridWidth) / 2)
             .clamp(0, double.infinity)
             .toDouble();
         final cellWidth =
-            ((maxWidth - sidePadding * 2 - (columns - 1) * _gridSpacing) /
-            columns);
-        final stableWidth = cellWidth < _minItemWidth
-            ? _minItemWidth
-            : cellWidth;
+            ((maxWidth - sidePadding * 2 - (columns - 1) * gridSpacing) /
+                columns);
+        // 桌面：过窄时用语义宽度稳住纵向比例；手机三列用真实 cell 宽度。
+        final stableWidth = compact
+            ? cellWidth
+            : (cellWidth < _minItemWidth ? _minItemWidth : cellWidth);
         // 上方近似方形缩略图区 + 下方文件名（两行 + 内边距）
         final childAspectRatio = stableWidth / (stableWidth + 52);
         final bottomPadding =
@@ -412,15 +431,15 @@ class FileBrowserPageState extends State<FileBrowserPage> {
           child: GridView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.fromLTRB(
-              sidePadding,
+              horizontalInset + sidePadding,
               12,
-              sidePadding,
+              horizontalInset + sidePadding,
               bottomPadding,
             ),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: columns,
-              crossAxisSpacing: _gridSpacing,
-              mainAxisSpacing: _gridSpacing,
+              crossAxisSpacing: gridSpacing,
+              mainAxisSpacing: gridSpacing,
               childAspectRatio: childAspectRatio,
             ),
             itemCount: _entries.length,
