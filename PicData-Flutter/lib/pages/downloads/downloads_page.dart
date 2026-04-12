@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:pic_data/debug/page_backdoor.dart';
 import 'package:pic_data/models/pic_set_download_record.dart';
-import 'package:pic_data/pages/downloads/all_failed_download_items_page.dart';
 import 'package:pic_data/pages/downloads/download_failed_items_page.dart';
 import 'package:pic_data/pages/files/open_download_record_local_folder.dart';
 import 'package:pic_data/services/download_file_service.dart';
@@ -205,7 +204,7 @@ Widget? _failedSectionAllFailuresButton(
     onPressed: () {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => const AllFailedDownloadItemsPage(),
+          builder: (_) => const DownloadFailedItemsPage(),
         ),
       );
     },
