@@ -102,6 +102,7 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
   Future<List<PicContent>> _contentsFuture = Future<List<PicContent>>.value(
     <PicContent>[],
   );
+  List<PicContent> _initialContents = <PicContent>[];
   final List<PicContent> _extraContents = <PicContent>[];
   String? _nextPageUrl;
   bool _isLoadingMore = false;
@@ -115,6 +116,42 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
   void initState() {
     super.initState();
     _contentsFuture = _loadPageContents();
+  }
+
+  void _setInitialContents(List<PicContent> contents) {
+    _initialContents = contents;
+  }
+
+  List<PicContent> _loadedContents() {
+    return <PicContent>[..._initialContents, ..._extraContents];
+  }
+
+  void _downloadAllLoadedContents() {
+    final Set<String> tracked =
+        PicSetDownloadRecordStore.instance.trackedContentHrefSet;
+    final Set<String> seen = <String>{};
+    var enqueued = 0;
+    var skipped = 0;
+
+    for (final PicContent content in _loadedContents()) {
+      final href = content.href.trim();
+      if (href.isEmpty || tracked.contains(href) || !seen.add(href)) {
+        skipped++;
+        continue;
+      }
+      PicDownloadModule.instance.enqueueDownloadSet(
+        content: content,
+        host: widget.host,
+      );
+      enqueued++;
+    }
+
+    if (enqueued <= 0) {
+      _showCenterHud(context, skipped > 0 ? '当前页套图已在下载列表中' : '当前页没有可下载套图');
+      return;
+    }
+    final suffix = skipped > 0 ? '，跳过 $skipped 个' : '';
+    _showCenterHud(context, '已加入 $enqueued 个下载任务$suffix');
   }
 
   Future<List<PicContent>> _loadPageContents() async {
@@ -169,6 +206,7 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
       ];
     }
 
+    _setInitialContents(contents);
     return contents;
   }
 
@@ -179,10 +217,18 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
         title: GestureDetector(
           onTap: () => debugPrintPageBackdoorInfo(
             className: 'TagGalleryPage',
-            filePath: 'PicData-Flutter/lib/pages/Home/gallery/tag_gallery_page.dart',
+            filePath:
+                'PicData-Flutter/lib/pages/Home/gallery/tag_gallery_page.dart',
           ),
           child: Text(widget.entry.title),
         ),
+        actions: [
+          IconButton(
+            tooltip: '下载全部',
+            icon: const Icon(Icons.download_for_offline_outlined),
+            onPressed: _downloadAllLoadedContents,
+          ),
+        ],
       ),
       body: FutureBuilder<List<PicContent>>(
         future: _contentsFuture,
@@ -225,14 +271,14 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
                   PicSetDownloadRecordStore.instance.completedContentHrefSet;
               final List<PicContent> initialContents =
                   applyCompletedDownloadFlagsToContents(
-                snapshot.data ?? <PicContent>[],
-                completed,
-              );
+                    snapshot.data ?? <PicContent>[],
+                    completed,
+                  );
               final List<PicContent> extraFlagged =
                   applyCompletedDownloadFlagsToContents(
-                _extraContents,
-                completed,
-              );
+                    _extraContents,
+                    completed,
+                  );
               final contents = <PicContent>[
                 ...initialContents,
                 ...extraFlagged,
@@ -249,8 +295,7 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
 
                   // 根据屏幕宽度动态计算每行展示几个 cell（窄屏收紧目标宽度以保证约三列）
                   final horizontalInset = galleryPageHorizontalInset(context);
-                  final maxWidth =
-                      constraints.maxWidth - 2 * horizontalInset;
+                  final maxWidth = constraints.maxWidth - 2 * horizontalInset;
                   final double itemWidth = PicContentGrid.resolveItemWidth(
                     context,
                     maxWidth,
@@ -263,8 +308,10 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
 
                   final gridWidth =
                       crossAxisCount * (itemWidth + spacing) - spacing;
-                  final double sidePadding =
-                      ((maxWidth - gridWidth) / 2).clamp(0, double.infinity);
+                  final double sidePadding = ((maxWidth - gridWidth) / 2).clamp(
+                    0,
+                    double.infinity,
+                  );
 
                   return Padding(
                     padding: EdgeInsets.symmetric(
@@ -275,17 +322,18 @@ class _TagGalleryPageState extends State<TagGalleryPage> {
                       children: [
                         Expanded(
                           child: GridView.builder(
-                            padding:
-                                EdgeInsets.symmetric(horizontal: sidePadding),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: sidePadding,
+                            ),
                             itemCount: contents.length,
                             gridDelegate:
                                 SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: crossAxisCount,
-                              mainAxisSpacing: spacing,
-                              crossAxisSpacing: spacing,
-                              // 控制高度（缩略图 + 标题区域），大约 4:5
-                              childAspectRatio: 3 / 4,
-                            ),
+                                  crossAxisCount: crossAxisCount,
+                                  mainAxisSpacing: spacing,
+                                  crossAxisSpacing: spacing,
+                                  // 控制高度（缩略图 + 标题区域），大约 4:5
+                                  childAspectRatio: 3 / 4,
+                                ),
                             itemBuilder: (context, index) {
                               final item = contents[index];
                               return _TagGalleryItem(
@@ -432,135 +480,135 @@ class _TagGalleryItemState extends State<_TagGalleryItem>
     return ListenableBuilder(
       listenable: PicSetDownloadRecordStore.instance,
       builder: (BuildContext context, Widget? _) {
-        final bool inDownloadList = item.href.isNotEmpty &&
-            PicSetDownloadRecordStore.instance.trackedContentHrefSet
-                .contains(item.href);
+        final bool inDownloadList =
+            item.href.isNotEmpty &&
+            PicSetDownloadRecordStore.instance.trackedContentHrefSet.contains(
+              item.href,
+            );
 
         return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) {
-        setState(() => _isHovered = true);
-      },
-      onExit: (_) {
-        setState(() => _isHovered = false);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOut,
-        transform: _isHovered
-            ? (Matrix4.identity()..scaleByDouble(1.02, 1.02, 1.02, 1))
-            : Matrix4.identity(),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: _isHovered
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.16),
-                    blurRadius: 18,
-                    spreadRadius: 1,
-                    offset: const Offset(0, 10),
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 10,
-                    spreadRadius: 0,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-        ),
-        child: Card(
-          elevation: _isHovered ? 8 : 2,
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: InkWell(
-            onTap: () {
-              final host = widget.host;
-              // ignore: avoid_print
-              print(
-                'Tap PicContent -> service="${host?.title}", '
-                'mark="${host?.mark}", sourceType=${host?.sourceType}',
-              );
-              // ignore: avoid_print
-              print('  PicContent.title   = "${item.title}"');
-              // ignore: avoid_print
-              print('  PicContent.href    = "${item.href}"');
-              // ignore: avoid_print
-              print('  PicContent.thumbnail = "${item.thumbnail}"');
-              // ignore: avoid_print
-              print('  image headers=$headers');
-
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => PicDetailPage(content: item, host: host),
-                ),
-              );
-            },
-            hoverColor: Colors.black.withValues(alpha: 0.02),
-            highlightColor: Colors.transparent,
-            splashColor: Colors.transparent,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: GalleryListThumbnail(
-                    imageUrl: item.thumbnail,
-                    headers: headers,
-                    title: item.title,
-                  ),
-                ),
-                Padding(
-                  padding: galleryGridCellTitleInsets(context),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: galleryGridTitleFontSize(context),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) {
+            setState(() => _isHovered = true);
+          },
+          onExit: (_) {
+            setState(() => _isHovered = false);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            transform: _isHovered
+                ? (Matrix4.identity()..scaleByDouble(1.02, 1.02, 1.02, 1))
+                : Matrix4.identity(),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: _isHovered
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.16),
+                        blurRadius: 18,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 10),
                       ),
-                      if (!inDownloadList)
-                        IconButton(
-                          tooltip: '下载',
-                          iconSize: galleryGridDownloadIconSize(context),
-                          splashRadius:
-                              isCompactGalleryGrid(context) ? 20 : 31,
-                          style: IconButton.styleFrom(
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            minimumSize: Size.zero,
-                            padding: EdgeInsets.zero,
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          icon: const Icon(Icons.download_outlined),
-                          onPressed: () {
-                            PicDownloadModule.instance.enqueueDownloadSet(
-                              content: item,
-                              host: widget.host,
-                            );
-                            _showCenterHud(
-                              context,
-                              '已加入下载队列，后台解析并保存到下载目录',
-                            );
-                          },
-                        ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 10,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 4),
+                      ),
                     ],
-                  ),
+            ),
+            child: Card(
+              elevation: _isHovered ? 8 : 2,
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: InkWell(
+                onTap: () {
+                  final host = widget.host;
+                  // ignore: avoid_print
+                  print(
+                    'Tap PicContent -> service="${host?.title}", '
+                    'mark="${host?.mark}", sourceType=${host?.sourceType}',
+                  );
+                  // ignore: avoid_print
+                  print('  PicContent.title   = "${item.title}"');
+                  // ignore: avoid_print
+                  print('  PicContent.href    = "${item.href}"');
+                  // ignore: avoid_print
+                  print('  PicContent.thumbnail = "${item.thumbnail}"');
+                  // ignore: avoid_print
+                  print('  image headers=$headers');
+
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => PicDetailPage(content: item, host: host),
+                    ),
+                  );
+                },
+                hoverColor: Colors.black.withValues(alpha: 0.02),
+                highlightColor: Colors.transparent,
+                splashColor: Colors.transparent,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: GalleryListThumbnail(
+                        imageUrl: item.thumbnail,
+                        headers: headers,
+                        title: item.title,
+                      ),
+                    ),
+                    Padding(
+                      padding: galleryGridCellTitleInsets(context),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: galleryGridTitleFontSize(context),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          if (!inDownloadList)
+                            IconButton(
+                              tooltip: '下载',
+                              iconSize: galleryGridDownloadIconSize(context),
+                              splashRadius: isCompactGalleryGrid(context)
+                                  ? 20
+                                  : 31,
+                              style: IconButton.styleFrom(
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                minimumSize: Size.zero,
+                                padding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              icon: const Icon(Icons.download_outlined),
+                              onPressed: () {
+                                PicDownloadModule.instance.enqueueDownloadSet(
+                                  content: item,
+                                  host: widget.host,
+                                );
+                                _showCenterHud(context, '已加入下载队列，后台解析并保存到下载目录');
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
-    );
+        );
       },
     );
   }

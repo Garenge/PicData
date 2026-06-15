@@ -25,6 +25,8 @@ class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _proxyPortController = TextEditingController();
   final TextEditingController _maxConcurrentDownloadsController =
       TextEditingController();
+  final TextEditingController _maxConcurrentSetDownloadsController =
+      TextEditingController();
   String _currentRootPath = '';
   bool _saving = false;
 
@@ -44,6 +46,14 @@ class _SettingsPageState extends State<SettingsPage> {
         '${DownloadConcurrencySettingsService.kMaxConcurrentImageDownloads}）';
   }
 
+  String _maxConcurrentSetDownloadsSubtitle() {
+    final DownloadConcurrencySettingsService s =
+        DownloadConcurrencySettingsService.instance;
+    final int v = s.maxConcurrentSetDownloads;
+    return '当前 $v 套（允许 ${DownloadConcurrencySettingsService.kMinConcurrentSetDownloads}–'
+        '${DownloadConcurrencySettingsService.kMaxConcurrentSetDownloads}）';
+  }
+
   List<_SettingItem> _buildSettingItems() {
     return <_SettingItem>[
       _SettingItem(
@@ -52,7 +62,12 @@ class _SettingsPageState extends State<SettingsPage> {
         onTap: _saving ? null : _showPathEditorDialog,
       ),
       _SettingItem(
-        title: '最大同时下载张数',
+        title: '最大同时下载套图数',
+        subtitle: _maxConcurrentSetDownloadsSubtitle(),
+        onTap: _saving ? null : _showMaxConcurrentSetDownloadsDialog,
+      ),
+      _SettingItem(
+        title: '最大同时下载图片张数',
         subtitle: _maxConcurrentDownloadsSubtitle(),
         onTap: _saving ? null : _showMaxConcurrentDownloadsDialog,
       ),
@@ -72,17 +87,26 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
-    DownloadFileService.instance.rootPathNotifier.addListener(_onRootPathChanged);
-    ProxySettingsService.instance.proxyHostNotifier.addListener(_onProxyChanged);
-    ProxySettingsService.instance.proxyPortNotifier.addListener(_onProxyChanged);
+    DownloadFileService.instance.rootPathNotifier.addListener(
+      _onRootPathChanged,
+    );
+    ProxySettingsService.instance.proxyHostNotifier.addListener(
+      _onProxyChanged,
+    );
+    ProxySettingsService.instance.proxyPortNotifier.addListener(
+      _onProxyChanged,
+    );
     DownloadConcurrencySettingsService.instance.maxConcurrentNotifier
-        .addListener(_onMaxConcurrentDownloadsChanged);
+        .addListener(_onConcurrencySettingsChanged);
+    DownloadConcurrencySettingsService.instance.maxConcurrentSetNotifier
+        .addListener(_onConcurrencySettingsChanged);
     _syncProxyFieldsFromService();
     _syncMaxConcurrentDownloadsFieldFromService();
+    _syncMaxConcurrentSetDownloadsFieldFromService();
     _loadRootPath();
   }
 
-  void _onMaxConcurrentDownloadsChanged() {
+  void _onConcurrencySettingsChanged() {
     if (!mounted) return;
     setState(() {});
   }
@@ -90,6 +114,11 @@ class _SettingsPageState extends State<SettingsPage> {
   void _syncMaxConcurrentDownloadsFieldFromService() {
     _maxConcurrentDownloadsController.text =
         '${DownloadConcurrencySettingsService.instance.maxConcurrentImageDownloads}';
+  }
+
+  void _syncMaxConcurrentSetDownloadsFieldFromService() {
+    _maxConcurrentSetDownloadsController.text =
+        '${DownloadConcurrencySettingsService.instance.maxConcurrentSetDownloads}';
   }
 
   void _onProxyChanged() {
@@ -116,17 +145,22 @@ class _SettingsPageState extends State<SettingsPage> {
       _onProxyChanged,
     );
     DownloadConcurrencySettingsService.instance.maxConcurrentNotifier
-        .removeListener(_onMaxConcurrentDownloadsChanged);
+        .removeListener(_onConcurrencySettingsChanged);
+    DownloadConcurrencySettingsService.instance.maxConcurrentSetNotifier
+        .removeListener(_onConcurrencySettingsChanged);
     _pathController.dispose();
     _proxyHostController.dispose();
     _proxyPortController.dispose();
     _maxConcurrentDownloadsController.dispose();
+    _maxConcurrentSetDownloadsController.dispose();
     super.dispose();
   }
 
   void _onRootPathChanged() {
     final latestPath = DownloadFileService.instance.rootPathNotifier.value;
-    if (!mounted || latestPath.isEmpty || latestPath == _currentRootPath) return;
+    if (!mounted || latestPath.isEmpty || latestPath == _currentRootPath) {
+      return;
+    }
     setState(() {
       _currentRootPath = latestPath;
       _pathController.text = latestPath;
@@ -152,9 +186,9 @@ class _SettingsPageState extends State<SettingsPage> {
       await DownloadFileService.instance.setRootPath(path);
       await _loadRootPath();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('下载目录已更新')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('下载目录已更新')));
     } finally {
       if (mounted) {
         setState(() {
@@ -172,9 +206,9 @@ class _SettingsPageState extends State<SettingsPage> {
       await DownloadFileService.instance.resetToDefaultRootPath();
       await _loadRootPath();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已恢复默认下载目录')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已恢复默认下载目录')));
     } finally {
       if (mounted) {
         setState(() {
@@ -194,11 +228,14 @@ class _SettingsPageState extends State<SettingsPage> {
         _saving = true;
       });
       try {
-        await ProxySettingsService.instance.setProxyHostAndPort(host: '', port: null);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('代理设置已保存（直连）')),
+        await ProxySettingsService.instance.setProxyHostAndPort(
+          host: '',
+          port: null,
         );
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('代理设置已保存（直连）')));
       } finally {
         if (mounted) {
           setState(() {
@@ -212,9 +249,9 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!ProxySettingsService.isValidHost(host) ||
         !ProxySettingsService.isValidPort(port)) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请填写有效的主机与端口（1–65535）')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请填写有效的主机与端口（1–65535）')));
       return;
     }
 
@@ -227,9 +264,9 @@ class _SettingsPageState extends State<SettingsPage> {
         port: port,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('代理设置已保存')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('代理设置已保存')));
     } finally {
       if (mounted) {
         setState(() {
@@ -237,6 +274,123 @@ class _SettingsPageState extends State<SettingsPage> {
         });
       }
     }
+  }
+
+  /// 校验通过并完成持久化后为 `true`，此时可关闭输入对话框。
+  Future<bool> _saveMaxConcurrentSetDownloads() async {
+    final String raw = _maxConcurrentSetDownloadsController.text.trim();
+    final int? parsed = int.tryParse(raw);
+    if (parsed == null) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '请输入 ${DownloadConcurrencySettingsService.kMinConcurrentSetDownloads}–'
+            '${DownloadConcurrencySettingsService.kMaxConcurrentSetDownloads} 之间的整数',
+          ),
+        ),
+      );
+      return false;
+    }
+    if (parsed <
+            DownloadConcurrencySettingsService.kMinConcurrentSetDownloads ||
+        parsed >
+            DownloadConcurrencySettingsService.kMaxConcurrentSetDownloads) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '允许范围：${DownloadConcurrencySettingsService.kMinConcurrentSetDownloads}–'
+            '${DownloadConcurrencySettingsService.kMaxConcurrentSetDownloads}',
+          ),
+        ),
+      );
+      return false;
+    }
+
+    setState(() {
+      _saving = true;
+    });
+    try {
+      await DownloadConcurrencySettingsService.instance
+          .setMaxConcurrentSetDownloads(parsed);
+      PicDownloadModule.instance.kickSetQueueAfterConcurrencyChange();
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '已设为同时下载 ${DownloadConcurrencySettingsService.instance.maxConcurrentSetDownloads} 套图',
+          ),
+        ),
+      );
+      return true;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _showMaxConcurrentSetDownloadsDialog() async {
+    _syncMaxConcurrentSetDownloadsFieldFromService();
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          constraints: _kSettingsDialogConstraints,
+          title: const Text('最大同时下载套图数'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text(
+                  '控制队列 A 中同时进行中的套图任务数量；保存后调高会立即补位，'
+                  '调低不会中断已开始的套图。允许范围 '
+                  '${DownloadConcurrencySettingsService.kMinConcurrentSetDownloads}–'
+                  '${DownloadConcurrencySettingsService.kMaxConcurrentSetDownloads}。',
+                  style: Theme.of(
+                    dialogContext,
+                  ).textTheme.bodyMedium?.copyWith(fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                _ConcurrencyStepperField(
+                  controller: _maxConcurrentSetDownloadsController,
+                  labelText: '最大同时下载套图数',
+                  hintText: '例如 2',
+                  min: DownloadConcurrencySettingsService
+                      .kMinConcurrentSetDownloads,
+                  max: DownloadConcurrencySettingsService
+                      .kMaxConcurrentSetDownloads,
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: _saving
+                  ? null
+                  : () => Navigator.of(dialogContext).pop(),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: _saving
+                  ? null
+                  : () async {
+                      final bool ok = await _saveMaxConcurrentSetDownloads();
+                      if (!dialogContext.mounted) return;
+                      if (ok) {
+                        Navigator.of(dialogContext).pop();
+                      }
+                    },
+              child: const Text('确定'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   /// 校验通过并完成持久化后为 `true`，此时可关闭输入对话框。
@@ -255,8 +409,10 @@ class _SettingsPageState extends State<SettingsPage> {
       );
       return false;
     }
-    if (parsed < DownloadConcurrencySettingsService.kMinConcurrentImageDownloads ||
-        parsed > DownloadConcurrencySettingsService.kMaxConcurrentImageDownloads) {
+    if (parsed <
+            DownloadConcurrencySettingsService.kMinConcurrentImageDownloads ||
+        parsed >
+            DownloadConcurrencySettingsService.kMaxConcurrentImageDownloads) {
       if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -280,7 +436,7 @@ class _SettingsPageState extends State<SettingsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '已设为同时下载 ${DownloadConcurrencySettingsService.instance.maxConcurrentImageDownloads} 张',
+            '已设为同时下载 ${DownloadConcurrencySettingsService.instance.maxConcurrentImageDownloads} 张图片',
           ),
         ),
       );
@@ -301,7 +457,7 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           constraints: _kSettingsDialogConstraints,
-          title: const Text('最大同时下载张数'),
+          title: const Text('最大同时下载图片张数'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -312,27 +468,28 @@ class _SettingsPageState extends State<SettingsPage> {
                   '已在下载中的任务不会被中断。允许范围 '
                   '${DownloadConcurrencySettingsService.kMinConcurrentImageDownloads}–'
                   '${DownloadConcurrencySettingsService.kMaxConcurrentImageDownloads}。',
-                  style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
-                        fontSize: 13,
-                      ),
+                  style: Theme.of(
+                    dialogContext,
+                  ).textTheme.bodyMedium?.copyWith(fontSize: 13),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                _ConcurrencyStepperField(
                   controller: _maxConcurrentDownloadsController,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: '最大同时下载张数',
-                    hintText: '例如 6',
-                  ),
-                  keyboardType: TextInputType.number,
-                  autocorrect: false,
+                  labelText: '最大同时下载图片张数',
+                  hintText: '例如 6',
+                  min: DownloadConcurrencySettingsService
+                      .kMinConcurrentImageDownloads,
+                  max: DownloadConcurrencySettingsService
+                      .kMaxConcurrentImageDownloads,
                 ),
               ],
             ),
           ),
           actions: <Widget>[
             TextButton(
-              onPressed: _saving ? null : () => Navigator.of(dialogContext).pop(),
+              onPressed: _saving
+                  ? null
+                  : () => Navigator.of(dialogContext).pop(),
               child: const Text('取消'),
             ),
             FilledButton(
@@ -425,7 +582,9 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           actions: <Widget>[
             TextButton(
-              onPressed: _saving ? null : () => Navigator.of(dialogContext).pop(),
+              onPressed: _saving
+                  ? null
+                  : () => Navigator.of(dialogContext).pop(),
               child: const Text('取消'),
             ),
             FilledButton(
@@ -451,9 +610,7 @@ class _SettingsPageState extends State<SettingsPage> {
         return AlertDialog(
           constraints: _kSettingsDialogConstraints,
           title: const Text('暂停所有下载'),
-          content: const Text(
-            '确定暂停所有下载任务？进行中的会在当前进度暂停；仅排队尚未开始的会保留在列表里。',
-          ),
+          content: const Text('确定暂停所有下载任务？进行中的会在当前进度暂停；仅排队尚未开始的会保留在列表里。'),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -475,9 +632,9 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
     setState(() {});
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('已暂停所有下载，可在「下载」页恢复')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('已暂停所有下载，可在「下载」页恢复')));
   }
 
   Future<void> _showPathEditorDialog() async {
@@ -496,7 +653,9 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           actions: [
             TextButton(
-              onPressed: _saving ? null : () => Navigator.of(dialogContext).pop(),
+              onPressed: _saving
+                  ? null
+                  : () => Navigator.of(dialogContext).pop(),
               child: const Text('取消'),
             ),
             TextButton(
@@ -552,6 +711,97 @@ class _SettingsPageState extends State<SettingsPage> {
             onTap: item.onTap,
           );
         },
+      ),
+    );
+  }
+}
+
+class _ConcurrencyStepperField extends StatelessWidget {
+  const _ConcurrencyStepperField({
+    required this.controller,
+    required this.labelText,
+    required this.hintText,
+    required this.min,
+    required this.max,
+  });
+
+  final TextEditingController controller;
+  final String labelText;
+  final String hintText;
+  final int min;
+  final int max;
+
+  void _step(int delta) {
+    final int? parsed = int.tryParse(controller.text.trim());
+    final int current = parsed ?? (delta > 0 ? min - 1 : min + 1);
+    final int next = (current + delta).clamp(min, max);
+    controller.value = TextEditingValue(
+      text: '$next',
+      selection: TextSelection.collapsed(offset: '$next'.length),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (BuildContext context, TextEditingValue value, Widget? child) {
+        final int? current = int.tryParse(value.text.trim());
+        final bool canDecrease = current == null || current > min;
+        final bool canIncrease = current == null || current < max;
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _StepperIconButton(
+              icon: Icons.remove,
+              tooltip: '减一',
+              onPressed: canDecrease ? () => _step(-1) : null,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  labelText: labelText,
+                  hintText: hintText,
+                ),
+                keyboardType: TextInputType.number,
+                autocorrect: false,
+              ),
+            ),
+            const SizedBox(width: 8),
+            _StepperIconButton(
+              icon: Icons.add,
+              tooltip: '加一',
+              onPressed: canIncrease ? () => _step(1) : null,
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _StepperIconButton extends StatelessWidget {
+  const _StepperIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: 48,
+      child: IconButton.outlined(
+        tooltip: tooltip,
+        icon: Icon(icon),
+        onPressed: onPressed,
       ),
     );
   }

@@ -11,7 +11,5 @@ void debugPrintPageBackdoorInfo({
   if (!kDebugMode) return;
   // ignore: avoid_print
   print('[PageBackdoor] class=$className file=$filePath');
-  // 复制
-  Clipboard.setData(ClipboardData(text: '[PageBackdoor] class=$className file=$filePath'));
+  Clipboard.setData(ClipboardData(text: className));
 }
-

@@ -42,8 +42,9 @@ class _DownloadFailedItemsPageState extends State<DownloadFailedItemsPage> {
   /// 单套模式：与原先单页一致，只要有失败明细就展示（不要求 status 仍为 failed）。
   List<PicSetDownloadRecord> _groupsForDisplay() {
     if (widget.recordId != null) {
-      final PicSetDownloadRecord? r =
-          PicSetDownloadRecordStore.instance.tryGet(widget.recordId!);
+      final PicSetDownloadRecord? r = PicSetDownloadRecordStore.instance.tryGet(
+        widget.recordId!,
+      );
       if (r == null || r.failureDetails.isEmpty) {
         return <PicSetDownloadRecord>[];
       }
@@ -65,11 +66,12 @@ class _DownloadFailedItemsPageState extends State<DownloadFailedItemsPage> {
     PicSetDownloadFailureDetail detail,
   ) async {
     final String k = _itemKey(recordId, detail);
-    if (_inFlightKeys.contains(k) || _groupRetryingRecordIds.contains(recordId)) {
+    if (_inFlightKeys.contains(k) ||
+        _groupRetryingRecordIds.contains(recordId)) {
       return;
     }
-    final PicSetDownloadRecord? record =
-        PicSetDownloadRecordStore.instance.tryGet(recordId);
+    final PicSetDownloadRecord? record = PicSetDownloadRecordStore.instance
+        .tryGet(recordId);
     if (record == null) {
       return;
     }
@@ -101,8 +103,8 @@ class _DownloadFailedItemsPageState extends State<DownloadFailedItemsPage> {
     if (_groupRetryingRecordIds.contains(recordId)) {
       return;
     }
-    final PicSetDownloadRecord? start =
-        PicSetDownloadRecordStore.instance.tryGet(recordId);
+    final PicSetDownloadRecord? start = PicSetDownloadRecordStore.instance
+        .tryGet(recordId);
     if (start == null || start.failureDetails.isEmpty) {
       return;
     }
@@ -116,14 +118,15 @@ class _DownloadFailedItemsPageState extends State<DownloadFailedItemsPage> {
         if (!mounted) {
           break;
         }
-        final PicSetDownloadRecord? current =
-            PicSetDownloadRecordStore.instance.tryGet(recordId);
+        final PicSetDownloadRecord? current = PicSetDownloadRecordStore.instance
+            .tryGet(recordId);
         if (current == null) {
           break;
         }
         final String k = _itemKey(recordId, detail);
         setState(() => _inFlightKeys.add(k));
-        final PicSingleImageRetryResult result = await PicDownloadModule.instance
+        final PicSingleImageRetryResult result = await PicDownloadModule
+            .instance
             .retryFailedImage(record: current, detail: detail);
         PicSetDownloadRecordStore.instance.applyFailureRetryResult(
           current.id,
@@ -175,42 +178,39 @@ class _DownloadFailedItemsPageState extends State<DownloadFailedItemsPage> {
         ),
       ),
       SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (BuildContext context, int index) {
-            final PicSetDownloadFailureDetail item = record.failureDetails[index];
-            final String k = _itemKey(record.id, item);
-            final bool busy = _inFlightKeys.contains(k);
-            final bool groupBusy = _groupRetryingRecordIds.contains(record.id);
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                if (index > 0) const Divider(height: 1),
-                ListTile(
-                  dense: true,
-                  title: Text('#${item.sequence} ${item.fileName}'),
-                  subtitle: Text(
-                    '原因: ${item.reason}\nURL: ${item.imageUrl}',
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: busy
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : TextButton(
-                          onPressed: groupBusy
-                              ? null
-                              : () => _retryOne(record.id, item),
-                          child: const Text('重试'),
-                        ),
+        delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
+          final PicSetDownloadFailureDetail item = record.failureDetails[index];
+          final String k = _itemKey(record.id, item);
+          final bool busy = _inFlightKeys.contains(k);
+          final bool groupBusy = _groupRetryingRecordIds.contains(record.id);
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              if (index > 0) const Divider(height: 1),
+              ListTile(
+                dense: true,
+                title: Text('#${item.sequence} ${item.fileName}'),
+                subtitle: Text(
+                  '原因: ${item.reason}\nURL: ${item.imageUrl}',
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
-            );
-          },
-          childCount: record.failureDetails.length,
-        ),
+                trailing: busy
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : TextButton(
+                        onPressed: groupBusy
+                            ? null
+                            : () => _retryOne(record.id, item),
+                        child: const Text('重试'),
+                      ),
+              ),
+            ],
+          );
+        }, childCount: record.failureDetails.length),
       ),
     ];
   }
@@ -249,8 +249,9 @@ class _DownloadFailedItemsPageState extends State<DownloadFailedItemsPage> {
         listenable: PicSetDownloadRecordStore.instance,
         builder: (BuildContext context, Widget? _) {
           if (_singleRecordMode && rid != null) {
-            final PicSetDownloadRecord? exists =
-                PicSetDownloadRecordStore.instance.tryGet(rid);
+            final PicSetDownloadRecord? exists = PicSetDownloadRecordStore
+                .instance
+                .tryGet(rid);
             if (exists == null) {
               return const Center(child: Text('记录不存在或已删除'));
             }
@@ -259,9 +260,7 @@ class _DownloadFailedItemsPageState extends State<DownloadFailedItemsPage> {
           final List<PicSetDownloadRecord> groups = _groupsForDisplay();
           if (groups.isEmpty) {
             return Center(
-              child: Text(
-                _singleRecordMode ? '没有失败项，已全部处理完成' : '当前没有失败项',
-              ),
+              child: Text(_singleRecordMode ? '没有失败项，已全部处理完成' : '当前没有失败项'),
             );
           }
 
@@ -340,10 +339,7 @@ class _GroupHeader extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     '${record.failureDetails.length} 张失败',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                   ),
                 ],
               ),

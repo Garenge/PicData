@@ -17,13 +17,18 @@ import 'package:pic_data/services/pic_set_download_manager.dart';
 import 'package:pic_data/services/pic_set_download_record_store.dart';
 
 const String _logCtx = 'PicData-Flutter/lib/services/pic_download_module.dart';
+const int _kSingleImageMaxAttempts = 3;
+const Duration _kSingleImageRetryDelay = Duration(milliseconds: 800);
 
 class _UserPauseException implements Exception {}
 
+class _TaskCancelledException implements Exception {}
+
 /// 下载模块：队列 A（套图任务）+ 队列 B（单图下载）。
 ///
-/// - **队列 A**：用户多次点击下载会 FIFO 排入；单套任务内先**分页解析完**并写入目标目录下的
-///   `urls.txt`，再为该套入队全部图片；待该套所有图片任务结束（含跳过已存在）后再处理下一套。
+/// - **队列 A**：用户多次点击下载会 FIFO 排入；最大同时处理套图数由
+///   [DownloadConcurrencySettingsService] 配置（默认 1，上限 3）。单套任务内先**分页解析完**并写入目标目录下的
+///   `urls.txt`，再为该套入队全部图片；待该套所有图片任务结束（含跳过已存在）后完成该套。
 /// - **队列 B**：单张图片 GET + 写盘，最大并发由 [DownloadConcurrencySettingsService] 配置（默认 3，上限 20）。
 class PicDownloadModule {
   PicDownloadModule._();
@@ -38,7 +43,8 @@ class PicDownloadModule {
   final Queue<PicSetDownloadQueueTask> _setQueue =
       Queue<PicSetDownloadQueueTask>();
   final Set<String> _setHrefInPipeline = <String>{};
-  bool _setPumpRunning = false;
+  final Set<String> _cancelledTaskIds = <String>{};
+  int _setInFlight = 0;
 
   final Queue<_ImageDownloadJob> _imageQueue = Queue<_ImageDownloadJob>();
   int _imageInFlight = 0;
@@ -57,6 +63,58 @@ class PicDownloadModule {
     }
   }
 
+  void _checkTaskCancelled(String taskId) {
+    if (_cancelledTaskIds.contains(taskId)) {
+      throw _TaskCancelledException();
+    }
+  }
+
+  /// 停止并删除单个套图任务：只影响 [taskId] 对应的套图，不触发全局暂停。
+  ///
+  /// 已经开始的 HTTP 请求无法被底层硬中断；其完成回调会被忽略，不再写入已删除记录。
+  Future<void> cancelAndRemoveSetTask(String taskId) async {
+    if (taskId.isEmpty) {
+      return;
+    }
+    _cancelledTaskIds.add(taskId);
+    _dropQueuedSetTask(taskId);
+    _dropQueuedImageJobs(taskId);
+    await PicSetDownloadRecordStore.instance.finishAndRemoveRecord(taskId);
+    // ignore: avoid_print
+    print(
+      '$_logCtx#cancelAndRemoveSetTask: taskId=$taskId '
+      'status=cancelled_and_removed',
+    );
+    _pumpSetQueue();
+    _pumpImageQueue();
+  }
+
+  void _dropQueuedSetTask(String taskId) {
+    final List<PicSetDownloadQueueTask> kept = <PicSetDownloadQueueTask>[];
+    while (_setQueue.isNotEmpty) {
+      final PicSetDownloadQueueTask task = _setQueue.removeFirst();
+      if (task.id == taskId) {
+        _setHrefInPipeline.remove(task.content.href);
+        continue;
+      }
+      kept.add(task);
+    }
+    _setQueue.addAll(kept);
+  }
+
+  void _dropQueuedImageJobs(String taskId) {
+    final List<_ImageDownloadJob> kept = <_ImageDownloadJob>[];
+    while (_imageQueue.isNotEmpty) {
+      final _ImageDownloadJob job = _imageQueue.removeFirst();
+      if (job.taskId == taskId) {
+        job.onFinished(_ImageDownloadOutcome.kSkippedWithoutStoreUpdate);
+        continue;
+      }
+      kept.add(job);
+    }
+    _imageQueue.addAll(kept);
+  }
+
   /// 设置页：暂停所有任务。已在内存中排队、尚未开始的套图会退回为仅库内「排队」；当前套在解析阶段会尽快结束并标记为已暂停；拉图阶段会丢弃未开始的单图任务并标记已暂停。
   void pauseAllDownloads() {
     if (_globallyPaused) {
@@ -70,7 +128,9 @@ class PicDownloadModule {
     }
     _dropPendingImageJobsDueToPause();
     // ignore: avoid_print
-    print('$_logCtx#pauseAllDownloads: globallyPaused=true, drained pending queues');
+    print(
+      '$_logCtx#pauseAllDownloads: globallyPaused=true, drained pending queues',
+    );
   }
 
   void _dropPendingImageJobsDueToPause() {
@@ -84,17 +144,18 @@ class PicDownloadModule {
   void resumeDownloadsAfterUserPause() {
     _globallyPaused = false;
     globalPauseNotifier.value = false;
-    final List<PicSetDownloadRecord> list = PicSetDownloadRecordStore.instance.records
-        .where(
-          (PicSetDownloadRecord r) =>
-              r.status == PicSetDownloadTaskStatus.queued ||
-              r.status == PicSetDownloadTaskStatus.paused,
-        )
-        .toList()
-      ..sort(
-        (PicSetDownloadRecord a, PicSetDownloadRecord b) =>
-            a.createdAt.compareTo(b.createdAt),
-      );
+    final List<PicSetDownloadRecord> list =
+        PicSetDownloadRecordStore.instance.records
+            .where(
+              (PicSetDownloadRecord r) =>
+                  r.status == PicSetDownloadTaskStatus.queued ||
+                  r.status == PicSetDownloadTaskStatus.paused,
+            )
+            .toList()
+          ..sort(
+            (PicSetDownloadRecord a, PicSetDownloadRecord b) =>
+                a.createdAt.compareTo(b.createdAt),
+          );
     for (final PicSetDownloadRecord r in list) {
       _enqueueRestoredSetTask(r.toResumeQueueTask());
     }
@@ -171,7 +232,7 @@ class PicDownloadModule {
       'PicDownloadModule 队列A 入队 ${task.content.title} '
       '(pending=${_setQueue.length})',
     );
-    unawaited(_pumpSetQueue());
+    _pumpSetQueue();
   }
 
   /// 冷启动在 [PicSetDownloadRecordStore.loadFromDatabaseOnStartup] 之后调用：把仍为
@@ -201,37 +262,37 @@ class PicDownloadModule {
     }
   }
 
-  /// 下载页：失败套图整表重新走解析与拉图；默认 [replaceExistingImageFiles] 为 `true`，与 [enqueueDownloadSet] 同名参数语义一致。
-  Future<void> retryFailedSetDownload(
+  /// 下载页：终态套图整表重新走解析与拉图；默认 [replaceExistingImageFiles] 为 `true`，与 [enqueueDownloadSet] 同名参数语义一致。
+  Future<void> redownloadSet(
     PicSetDownloadRecord record, {
     bool replaceExistingImageFiles = true,
   }) async {
-    if (record.status != PicSetDownloadTaskStatus.failed) {
+    if (!record.status.canRedownload) {
       // ignore: avoid_print
       print(
-        '$_logCtx#retryFailedSetDownload: skip non-failed id=${record.id} '
+        '$_logCtx#redownloadSet: skip non-redownloadable id=${record.id} '
         'status=${record.status}',
       );
       return;
     }
-    await PicSetDownloadRecordStore.instance.resetFailedRecordToQueuedForRetry(
+    await PicSetDownloadRecordStore.instance.resetRecordToQueuedForRedownload(
       record.id,
     );
-    final PicSetDownloadRecord? updated =
-        PicSetDownloadRecordStore.instance.tryGet(record.id);
+    final PicSetDownloadRecord? updated = PicSetDownloadRecordStore.instance
+        .tryGet(record.id);
     if (updated == null || updated.status != PicSetDownloadTaskStatus.queued) {
       return;
     }
     if (_globallyPaused) {
       // ignore: avoid_print
       print(
-        '$_logCtx#retryFailedSetDownload: globallyPaused, record queued only '
+        '$_logCtx#redownloadSet: globallyPaused, record queued only '
         'id=${record.id}',
       );
       return;
     }
     _enqueueRestoredSetTask(
-      updated.toRetryQueueTask(
+      updated.toRedownloadQueueTask(
         replaceExistingImageFiles: replaceExistingImageFiles,
       ),
     );
@@ -259,44 +320,50 @@ class PicDownloadModule {
       '$_logCtx#_enqueueRestoredSetTask: restored id=${task.id} '
       'title="${task.content.title}" pending=${_setQueue.length}',
     );
-    unawaited(_pumpSetQueue());
+    _pumpSetQueue();
   }
 
-  Future<void> _pumpSetQueue() async {
-    if (_setPumpRunning) return;
-    _setPumpRunning = true;
+  void _pumpSetQueue() {
+    final int cap =
+        DownloadConcurrencySettingsService.instance.maxConcurrentSetDownloads;
+    while (!_globallyPaused && _setInFlight < cap && _setQueue.isNotEmpty) {
+      final task = _setQueue.removeFirst();
+      _setInFlight++;
+      unawaited(_runOneSetTask(task));
+    }
+  }
+
+  Future<void> _runOneSetTask(PicSetDownloadQueueTask task) async {
     try {
-      while (_setQueue.isNotEmpty) {
-        if (_globallyPaused) {
-          break;
-        }
-        final task = _setQueue.removeFirst();
-        try {
-          await _processSetTask(task);
-          // ignore: avoid_print
-          print(
-            'PicDownloadModule 队列A 完成 id=${task.id} '
-            'title="${task.content.title}"',
-          );
-        } on _UserPauseException {
-          PicSetDownloadRecordStore.instance.markPaused(task.id);
-          // ignore: avoid_print
-          print(
-            '$_logCtx#_pumpSetQueue: userPause id=${task.id} '
-            'title="${task.content.title}"',
-          );
-        } catch (e, st) {
-          PicSetDownloadRecordStore.instance.markFailed(task.id, '$e');
-          // ignore: avoid_print
-          print('$_logCtx#_pumpSetQueue: task failed id=${task.id} error=$e');
-          // ignore: avoid_print
-          print('  stack=$st');
-        } finally {
-          _setHrefInPipeline.remove(task.content.href);
-        }
-      }
+      await _processSetTask(task);
+      // ignore: avoid_print
+      print(
+        'PicDownloadModule 队列A 完成 id=${task.id} '
+        'title="${task.content.title}"',
+      );
+    } on _UserPauseException {
+      PicSetDownloadRecordStore.instance.markPaused(task.id);
+      // ignore: avoid_print
+      print(
+        '$_logCtx#_runOneSetTask: userPause id=${task.id} '
+        'title="${task.content.title}"',
+      );
+    } on _TaskCancelledException {
+      // ignore: avoid_print
+      print(
+        '$_logCtx#_runOneSetTask: taskCancelled id=${task.id} '
+        'title="${task.content.title}"',
+      );
+    } catch (e, st) {
+      PicSetDownloadRecordStore.instance.markFailed(task.id, '$e');
+      // ignore: avoid_print
+      print('$_logCtx#_runOneSetTask: task failed id=${task.id} error=$e');
+      // ignore: avoid_print
+      print('  stack=$st');
     } finally {
-      _setPumpRunning = false;
+      _setInFlight--;
+      _setHrefInPipeline.remove(task.content.href);
+      _pumpSetQueue();
     }
   }
 
@@ -314,6 +381,7 @@ class PicDownloadModule {
     }
 
     _checkUserPause();
+    _checkTaskCancelled(task.id);
 
     final subFolder = ocDownloadSubFolderPath(
       host: task.host,
@@ -330,6 +398,7 @@ class PicDownloadModule {
       PicSetDownloadRecordStore.instance.markPickedUp(task.id);
 
       _checkUserPause();
+      _checkTaskCancelled(task.id);
 
       final seenUrl = <String>{};
       final pendingImages = <_PendingSetImage>[];
@@ -347,6 +416,7 @@ class PicDownloadModule {
         logPages: false,
         onPage: (page) async {
           _checkUserPause();
+          _checkTaskCancelled(task.id);
           final chunk = StringBuffer();
           for (final url in page.imageUrls) {
             if (!seenUrl.add(url)) {
@@ -374,6 +444,7 @@ class PicDownloadModule {
       );
 
       _checkUserPause();
+      _checkTaskCancelled(task.id);
 
       PicSetDownloadRecordStore.instance.markParsePhaseDone(
         task.id,
@@ -404,6 +475,7 @@ class PicDownloadModule {
 
       for (var i = 0; i < pendingImages.length; i++) {
         _checkUserPause();
+        _checkTaskCancelled(task.id);
         final pending = pendingImages[i];
         final seq = i + 1;
         inFlightCount++;
@@ -418,6 +490,7 @@ class PicDownloadModule {
         );
         _enqueueImage(
           _ImageDownloadJob(
+            taskId: task.id,
             setTitle: task.content.title,
             fileName: fileName,
             sequence: seq,
@@ -426,7 +499,8 @@ class PicDownloadModule {
             targetFile: file,
             replaceExistingImageFiles: task.replaceExistingImageFiles,
             onFinished: (_ImageDownloadOutcome outcome) {
-              if (!outcome.skippedWithoutStoreUpdate) {
+              if (!outcome.skippedWithoutStoreUpdate &&
+                  !_cancelledTaskIds.contains(task.id)) {
                 PicSetDownloadRecordStore.instance.recordImageJobOutcome(
                   task.id,
                   success: outcome.success,
@@ -457,6 +531,7 @@ class PicDownloadModule {
         PicSetDownloadRecordStore.instance.markPaused(task.id);
         return;
       }
+      _checkTaskCancelled(task.id);
 
       final PicSetDownloadRecord? sumRec = PicSetDownloadRecordStore.instance
           .tryGet(task.id);
@@ -487,6 +562,8 @@ class PicDownloadModule {
       }
     } on _UserPauseException {
       rethrow;
+    } on _TaskCancelledException {
+      rethrow;
     } catch (e, st) {
       // ignore: avoid_print
       print(
@@ -504,17 +581,20 @@ class PicDownloadModule {
     _pumpImageQueue();
   }
 
-  /// 设置页调整「最大同时下载张数」后调用：新上限立即参与调度；已在飞行中的任务不会被强行取消。
+  /// 设置页调整「最大同时下载图片张数」后调用：新上限立即参与调度；已在飞行中的任务不会被强行取消。
   void kickImageQueueAfterConcurrencyChange() {
     _pumpImageQueue();
+  }
+
+  /// 设置页调整「最大同时下载套图数」后调用：调高立即补位，调低不强行中断已开始套图。
+  void kickSetQueueAfterConcurrencyChange() {
+    _pumpSetQueue();
   }
 
   void _pumpImageQueue() {
     final int cap =
         DownloadConcurrencySettingsService.instance.maxConcurrentImageDownloads;
-    while (!_globallyPaused &&
-        _imageInFlight < cap &&
-        _imageQueue.isNotEmpty) {
+    while (!_globallyPaused && _imageInFlight < cap && _imageQueue.isNotEmpty) {
       _imageInFlight++;
       final job = _imageQueue.removeFirst();
       unawaited(_runOneImageDownload(job));
@@ -522,6 +602,15 @@ class PicDownloadModule {
   }
 
   Future<void> _runOneImageDownload(_ImageDownloadJob job) async {
+    if (_cancelledTaskIds.contains(job.taskId)) {
+      try {
+        job.onFinished(_ImageDownloadOutcome.kSkippedWithoutStoreUpdate);
+      } finally {
+        _imageInFlight--;
+        _pumpImageQueue();
+      }
+      return;
+    }
     final PicSingleImageRetryResult result = await _downloadImageToFile(
       setTitle: job.setTitle,
       fileName: job.fileName,
@@ -589,45 +678,86 @@ class PicDownloadModule {
       '$_logCtx#_downloadImageToFile: file_begin '
       'set="$setTitle" file="$fileName" seq=$sequence',
     );
-    try {
-      if (await targetFile.exists()) {
-        if (replaceExistingImageFiles) {
-          await targetFile.delete();
-          // ignore: avoid_print
-          print(
-            '$_logCtx#_downloadImageToFile: deleted_existing '
-            'set="$setTitle" file="$fileName" seq=$sequence',
-          );
-        } else {
-          // ignore: avoid_print
-          print(
-            '$_logCtx#_downloadImageToFile: file_end '
-            'set="$setTitle" file="$fileName" seq=$sequence status=skipped_exists',
-          );
-          return const PicSingleImageRetryResult(success: true);
+    Object? lastError;
+    StackTrace? lastStackTrace;
+
+    for (var attempt = 1; attempt <= _kSingleImageMaxAttempts; attempt++) {
+      try {
+        if (await targetFile.exists()) {
+          if (replaceExistingImageFiles) {
+            await targetFile.delete();
+            // ignore: avoid_print
+            print(
+              '$_logCtx#_downloadImageToFile: deleted_existing '
+              'set="$setTitle" file="$fileName" seq=$sequence attempt=$attempt',
+            );
+          } else {
+            // ignore: avoid_print
+            print(
+              '$_logCtx#_downloadImageToFile: file_end '
+              'set="$setTitle" file="$fileName" seq=$sequence status=skipped_exists',
+            );
+            return const PicSingleImageRetryResult(success: true);
+          }
+        }
+        final List<int> bytes = await NetClient.instance.getBytes(
+          imageUrl,
+          headers: headers,
+        );
+        await targetFile.writeAsBytes(bytes);
+        // ignore: avoid_print
+        print(
+          '$_logCtx#_downloadImageToFile: file_end '
+          'set="$setTitle" file="$fileName" seq=$sequence '
+          'status=ok attempt=$attempt bytes=${bytes.length}',
+        );
+        return const PicSingleImageRetryResult(success: true);
+      } catch (e, st) {
+        lastError = e;
+        lastStackTrace = st;
+        final bool willRetry = attempt < _kSingleImageMaxAttempts;
+        // ignore: avoid_print
+        print(
+          '$_logCtx#_downloadImageToFile: attempt_failed '
+          'set="$setTitle" file="$fileName" seq=$sequence '
+          'attempt=$attempt/$_kSingleImageMaxAttempts error=$e',
+        );
+        // ignore: avoid_print
+        print('  stack=$st');
+        if (await targetFile.exists()) {
+          try {
+            await targetFile.delete();
+            // ignore: avoid_print
+            print(
+              '$_logCtx#_downloadImageToFile: deleted_partial '
+              'set="$setTitle" file="$fileName" seq=$sequence '
+              'attempt=$attempt',
+            );
+          } catch (_) {
+            // 保留原始下载错误作为最终失败原因
+          }
+        }
+        if (willRetry) {
+          await Future<void>.delayed(_kSingleImageRetryDelay);
+          continue;
         }
       }
-      final List<int> bytes = await NetClient.instance.getBytes(
-        imageUrl,
-        headers: headers,
-      );
-      await targetFile.writeAsBytes(bytes);
-      // ignore: avoid_print
-      print(
-        '$_logCtx#_downloadImageToFile: file_end '
-        'set="$setTitle" file="$fileName" seq=$sequence status=ok bytes=${bytes.length}',
-      );
-      return const PicSingleImageRetryResult(success: true);
-    } catch (e, st) {
-      // ignore: avoid_print
-      print(
-        '$_logCtx#_downloadImageToFile: file_end '
-        'set="$setTitle" file="$fileName" seq=$sequence status=failed error=$e',
-      );
-      // ignore: avoid_print
-      print('  stack=$st');
-      return PicSingleImageRetryResult(success: false, failureReason: '$e');
     }
+
+    // ignore: avoid_print
+    print(
+      '$_logCtx#_downloadImageToFile: file_end '
+      'set="$setTitle" file="$fileName" seq=$sequence '
+      'status=failed attempts=$_kSingleImageMaxAttempts error=$lastError',
+    );
+    if (lastStackTrace != null) {
+      // ignore: avoid_print
+      print('  stack=$lastStackTrace');
+    }
+    return PicSingleImageRetryResult(
+      success: false,
+      failureReason: '$lastError',
+    );
   }
 }
 
@@ -640,6 +770,7 @@ class PicSingleImageRetryResult {
 
 class _ImageDownloadJob {
   _ImageDownloadJob({
+    required this.taskId,
     required this.setTitle,
     required this.fileName,
     required this.sequence,
@@ -650,6 +781,7 @@ class _ImageDownloadJob {
     required this.onFinished,
   });
 
+  final String taskId;
   final String setTitle;
   final String fileName;
 
@@ -674,10 +806,10 @@ class _ImageDownloadOutcome {
   /// 全局暂停时从队列 B 丢弃的占位任务：只减少 in-flight 计数，不写 [PicSetDownloadRecordStore]。
   static const _ImageDownloadOutcome kSkippedWithoutStoreUpdate =
       _ImageDownloadOutcome(
-    success: false,
-    failureReason: null,
-    skippedWithoutStoreUpdate: true,
-  );
+        success: false,
+        failureReason: null,
+        skippedWithoutStoreUpdate: true,
+      );
 
   final bool success;
   final String? failureReason;

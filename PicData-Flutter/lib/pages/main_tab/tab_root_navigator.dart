@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:pic_data/debug/navigation_debug_logger.dart';
+
 /// 底部 tab 内的嵌套路由栈：子页面 `push` 只叠在本 tab 上，
 /// 不会盖住外层 [MainTabPage] 的 [BottomNavigationBar]。
 class TabRootNavigator extends StatelessWidget {
@@ -18,6 +20,7 @@ class TabRootNavigator extends StatelessWidget {
   Widget build(BuildContext context) {
     return Navigator(
       key: navigatorKey,
+      observers: <NavigatorObserver>[NavigationDebugObserver()],
       initialRoute: Navigator.defaultRouteName,
       onGenerateRoute: (RouteSettings settings) {
         if (settings.name == Navigator.defaultRouteName) {

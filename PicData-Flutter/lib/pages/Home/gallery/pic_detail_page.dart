@@ -114,6 +114,12 @@ class _PicDetailPageState extends State<PicDetailPage> {
 
   void _onTapDownloadSet() => _enqueueDownloadSet(widget.content);
 
+  Future<void> _reloadCurrentPage() async {
+    final href = _currentHref;
+    if (href.isEmpty) return;
+    await _loadDetailForHref(href);
+  }
+
   Future<bool> _loadDetailForHref(String href) async {
     if (href.isEmpty) return false;
     final requestHeaders = PicDetailPageLoader.buildDetailRequestHeaders(
@@ -249,6 +255,11 @@ class _PicDetailPageState extends State<PicDetailPage> {
         ),
       ),
       actions: [
+        IconButton(
+          tooltip: '重新加载本页',
+          onPressed: _isLoading ? null : _reloadCurrentPage,
+          icon: const Icon(Icons.refresh),
+        ),
         if (hasNextHref)
           TextButton(
             onPressed: _isLoading

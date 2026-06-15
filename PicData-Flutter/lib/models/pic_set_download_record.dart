@@ -20,6 +20,12 @@ enum PicSetDownloadTaskStatus {
   failed,
 }
 
+extension PicSetDownloadTaskStatusX on PicSetDownloadTaskStatus {
+  bool get canRedownload =>
+      this == PicSetDownloadTaskStatus.completed ||
+      this == PicSetDownloadTaskStatus.failed;
+}
+
 /// Host 快照，避免持久化/UI 依赖可变 [PicHost] 引用。
 class PicHostSnapshot {
   const PicHostSnapshot({
@@ -308,8 +314,8 @@ class PicSetDownloadRecord {
     );
   }
 
-  /// 失败套图在 UI 触发「重新下载」：沿用同一 [id] 与库行，可选覆盖本地已存在图片。
-  PicSetDownloadQueueTask toRetryQueueTask({
+  /// 终态套图在 UI 触发「重新下载」：沿用同一 [id] 与库行，可选覆盖本地已存在图片。
+  PicSetDownloadQueueTask toRedownloadQueueTask({
     bool replaceExistingImageFiles = true,
   }) {
     return PicSetDownloadQueueTask(

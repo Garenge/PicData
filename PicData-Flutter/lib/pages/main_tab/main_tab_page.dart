@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:pic_data/debug/navigation_debug_logger.dart';
+import 'package:pic_data/pages/Home/home_page.dart';
 import 'package:pic_data/pages/downloads/downloads_page.dart';
 import 'package:pic_data/pages/files/files_page.dart';
 import 'package:pic_data/pages/files/files_tab_refresh_scope.dart';
@@ -20,13 +22,19 @@ class _MainTabPageState extends State<MainTabPage> {
   int _selectedIndex = 0;
   int _filesRefreshSignal = 0;
   int _downloadsRefreshSignal = 0;
+  static final List<Type> _tabPageTypes = <Type>[
+    HomePage,
+    FilesPage,
+    DownloadsPage,
+    SettingsPage,
+  ];
 
   /// 与 [IndexedStack] 中各 Tab 一一对应，用于系统返回 / 桌面 Backspace 只操作当前 Tab 的嵌套路由栈。
   late final List<GlobalKey<NavigatorState>> _tabNavigatorKeys =
       List<GlobalKey<NavigatorState>>.generate(
-    4,
-    (_) => GlobalKey<NavigatorState>(),
-  );
+        4,
+        (_) => GlobalKey<NavigatorState>(),
+      );
 
   /// macOS / Windows / Linux / Web：键盘 Backspace 触发子栈 [Navigator.pop]（根页不退出应用）。
   bool get _keyboardBackspaceNavEnabled {
@@ -40,8 +48,7 @@ class _MainTabPageState extends State<MainTabPage> {
 
   /// 弹出当前 Tab 嵌套栈顶（若有）。返回是否执行了 pop。
   bool _tryPopCurrentTabNestedRoute() {
-    final NavigatorState? nav =
-        _tabNavigatorKeys[_selectedIndex].currentState;
+    final NavigatorState? nav = _tabNavigatorKeys[_selectedIndex].currentState;
     if (nav != null && nav.canPop()) {
       nav.pop();
       return true;
@@ -50,6 +57,7 @@ class _MainTabPageState extends State<MainTabPage> {
   }
 
   void _onTap(int index) {
+    logNavigationDebugPage(_tabPageTypes[index]);
     setState(() {
       _selectedIndex = index;
       if (index == 1) {

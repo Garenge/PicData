@@ -118,13 +118,14 @@ class HostsDrawer extends StatelessWidget {
             _showCenterHud(context, '切换成功');
           },
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 10,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
-                _buildLeadingIcon(theme: theme, scheme: scheme, isSelected: isSelected),
+                _buildLeadingIcon(
+                  theme: theme,
+                  scheme: scheme,
+                  isSelected: isSelected,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildHostTexts(
@@ -137,7 +138,7 @@ class HostsDrawer extends StatelessWidget {
                     isSelected: isSelected,
                   ),
                 ),
-                _buildCopyButton(context: context, host: host, url: url),
+                _buildCopyButton(context: context, url: url),
               ],
             ),
           ),
@@ -176,8 +177,9 @@ class HostsDrawer extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-            color:
-                isSelected ? scheme.primary : theme.textTheme.bodyMedium?.color,
+            color: isSelected
+                ? scheme.primary
+                : theme.textTheme.bodyMedium?.color,
           ).merge(const TextStyle()),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
@@ -198,10 +200,7 @@ class HostsDrawer extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             [mark, tips].where((e) => e.isNotEmpty).join(' · '),
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey.shade500,
-            ),
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -212,7 +211,6 @@ class HostsDrawer extends StatelessWidget {
 
   Widget _buildCopyButton({
     required BuildContext context,
-    required PicHost host,
     required String url,
   }) {
     return IconButton(
@@ -220,10 +218,10 @@ class HostsDrawer extends StatelessWidget {
       icon: const Icon(Icons.copy_outlined, size: 18),
       onPressed: () async {
         await Clipboard.setData(ClipboardData(text: url));
+        if (!context.mounted) {
+          return;
+        }
         _showCenterHud(context, '复制成功');
-        // TODO: 复制按钮后续逻辑
-        // ignore: avoid_print
-        print('Copy clicked for host: ${host.title}');
       },
     );
   }

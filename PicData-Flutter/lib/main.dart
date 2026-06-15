@@ -1,5 +1,8 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'debug/dev_overlay.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'package:pic_data/persistence/pic_database.dart';
 import 'package:pic_data/services/pic_download_module.dart';
@@ -12,8 +15,11 @@ import 'services/net_client.dart';
 import 'services/pic_net_service.dart';
 import 'services/proxy_settings_service.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
+    await windowManager.ensureInitialized();
+  }
   runApp(const MyApp());
 }
 

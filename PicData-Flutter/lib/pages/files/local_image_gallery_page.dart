@@ -8,13 +8,17 @@ import 'package:path/path.dart' as p;
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:swipe_image_gallery/swipe_image_gallery.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'package:pic_data/debug/page_backdoor.dart';
 
-const String _logPath = 'PicData-Flutter/lib/pages/files/local_image_gallery_page.dart';
+const String _logPath =
+    'PicData-Flutter/lib/pages/files/local_image_gallery_page.dart';
 
 /// 桌面端：系统长按方向键产生的 [KeyRepeatEvent] 两次触发翻页的最小间隔。
-const Duration _kDesktopGalleryArrowRepeatThrottle = Duration(milliseconds: 110);
+const Duration _kDesktopGalleryArrowRepeatThrottle = Duration(
+  milliseconds: 110,
+);
 
 /// 桌面端：触摸板/鼠标水平轻扫翻页动画时长（键盘翻页使用 [PageController.jumpToPage] 无此动画）。
 const int _kGalleryDragPageTurnMs = 150;
@@ -75,10 +79,7 @@ Future<void> showLocalSwipeImageGallery(
         );
       },
       overlayController: overlayController,
-      initialOverlay: _SwipeGalleryOverlay(
-        imagePaths: imagePaths,
-        index: safe,
-      ),
+      initialOverlay: _SwipeGalleryOverlay(imagePaths: imagePaths, index: safe),
       onSwipe: (int i) {
         overlayController.add(
           _SwipeGalleryOverlay(imagePaths: imagePaths, index: i),
@@ -91,10 +92,7 @@ Future<void> showLocalSwipeImageGallery(
 }
 
 class _SwipeGalleryOverlay extends StatefulWidget {
-  const _SwipeGalleryOverlay({
-    required this.imagePaths,
-    required this.index,
-  });
+  const _SwipeGalleryOverlay({required this.imagePaths, required this.index});
 
   final List<String> imagePaths;
   final int index;
@@ -167,7 +165,9 @@ class _SwipeGalleryOverlayState extends State<_SwipeGalleryOverlay> {
                   IconButton(
                     icon: const Icon(Icons.close_rounded),
                     color: Colors.white,
-                    tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                    tooltip: MaterialLocalizations.of(
+                      context,
+                    ).closeButtonTooltip,
                     onPressed: () {
                       Navigator.of(context, rootNavigator: true).maybePop();
                     },
@@ -214,14 +214,14 @@ class _SwipeGalleryOverlayState extends State<_SwipeGalleryOverlay> {
             Material(
               color: Colors.black.withValues(alpha: 0.85),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Text(
                   _metaText!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ),
             ),
@@ -257,6 +257,8 @@ class _LocalImageGalleryPageState extends State<LocalImageGalleryPage> {
   double? _currentScale;
   double _dragDeltaX = 0;
   DateTime? _lastArrowGalleryStepAt;
+  bool _enteredSystemFullscreen = false;
+  bool _immersiveFullscreenPreview = false;
 
   @override
   void initState() {
@@ -271,9 +273,84 @@ class _LocalImageGalleryPageState extends State<LocalImageGalleryPage> {
 
   @override
   void dispose() {
+    _restoreSystemFullscreen();
     _focusNode.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _enterSystemFullscreen() async {
+    if (!_desktopWindowFullscreenSupported) {
+      return;
+    }
+    try {
+      final bool isFullscreen = await windowManager.isFullScreen();
+      if (isFullscreen) {
+        _setImmersiveFullscreenPreview(true);
+        return;
+      }
+      await windowManager.setFullScreen(true);
+      _enteredSystemFullscreen = true;
+      _setImmersiveFullscreenPreview(true);
+    } catch (e) {
+      debugPrint('$_logPath#_enterSystemFullscreen: failed error=$e');
+      _setImmersiveFullscreenPreview(true);
+    }
+  }
+
+  Future<void> _exitSystemFullscreen() async {
+    if (!_desktopWindowFullscreenSupported) {
+      _enteredSystemFullscreen = false;
+      _setImmersiveFullscreenPreview(false);
+      return;
+    }
+    try {
+      if (!await windowManager.isFullScreen()) {
+        _enteredSystemFullscreen = false;
+        _setImmersiveFullscreenPreview(false);
+        return;
+      }
+      if (_enteredSystemFullscreen) {
+        await windowManager.setFullScreen(false);
+      }
+    } catch (e) {
+      debugPrint('$_logPath#_exitSystemFullscreen: failed error=$e');
+    } finally {
+      _enteredSystemFullscreen = false;
+      _setImmersiveFullscreenPreview(false);
+    }
+  }
+
+  void _restoreSystemFullscreen() {
+    _immersiveFullscreenPreview = false;
+    if (!_enteredSystemFullscreen || !_desktopWindowFullscreenSupported) {
+      return;
+    }
+    windowManager.setFullScreen(false);
+    _enteredSystemFullscreen = false;
+  }
+
+  Future<void> _handleEscape() async {
+    if (_desktopWindowFullscreenSupported && _immersiveFullscreenPreview) {
+      await _exitSystemFullscreen();
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    Navigator.of(context).maybePop();
+  }
+
+  bool get _desktopWindowFullscreenSupported =>
+      !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
+
+  void _setImmersiveFullscreenPreview(bool value) {
+    if (!mounted || _immersiveFullscreenPreview == value) {
+      return;
+    }
+    setState(() {
+      _immersiveFullscreenPreview = value;
+    });
   }
 
   Future<void> _updateMetaForIndex(int index) async {
@@ -343,7 +420,8 @@ class _LocalImageGalleryPageState extends State<LocalImageGalleryPage> {
 
     // 仅处理按下与系统长按重复，避免误吞其它按键阶段。
     final bool isArrowStep =
-        key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight;
+        key == LogicalKeyboardKey.arrowLeft ||
+        key == LogicalKeyboardKey.arrowRight;
     if (!isArrowStep) {
       if (event is! KeyDownEvent) {
         return KeyEventResult.ignored;
@@ -420,8 +498,16 @@ class _LocalImageGalleryPageState extends State<LocalImageGalleryPage> {
     if (event is! KeyDownEvent) {
       return KeyEventResult.ignored;
     }
-    if (key == LogicalKeyboardKey.escape ||
-        key == LogicalKeyboardKey.arrowUp ||
+    if (key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter) {
+      _enterSystemFullscreen();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.escape) {
+      _handleEscape();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowUp ||
         key == LogicalKeyboardKey.arrowDown ||
         key == LogicalKeyboardKey.space) {
       Navigator.of(context).maybePop();
@@ -456,17 +542,11 @@ class _LocalImageGalleryPageState extends State<LocalImageGalleryPage> {
             _currentBaseName(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           Text(
             '${_currentIndex + 1} / $total',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.normal,
-            ),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.normal),
           ),
         ],
       ),
@@ -484,25 +564,178 @@ class _LocalImageGalleryPageState extends State<LocalImageGalleryPage> {
         child: Text(
           _metaText!,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGalleryArea({required bool immersive, required int total}) {
+    final Widget gallery = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragStart: (DragStartDetails details) {
+        if (!_isAtBaseScaleOrUnknown) {
+          _dragDeltaX = 0;
+          return;
+        }
+        _dragDeltaX = 0;
+      },
+      onHorizontalDragUpdate: (DragUpdateDetails details) {
+        if (!_isAtBaseScaleOrUnknown) {
+          return;
+        }
+        _dragDeltaX += details.delta.dx;
+      },
+      onHorizontalDragEnd: (DragEndDetails details) {
+        if (!_isAtBaseScaleOrUnknown) {
+          _dragDeltaX = 0;
+          return;
+        }
+        const double threshold = 80;
+        if (_dragDeltaX > threshold) {
+          _goToPrev();
+        } else if (_dragDeltaX < -threshold) {
+          _goToNext();
+        }
+        _dragDeltaX = 0;
+      },
+      child: PhotoViewGallery.builder(
+        scrollPhysics: const BouncingScrollPhysics(),
+        pageController: _pageController,
+        itemCount: total,
+        onPageChanged: (int index) {
+          setState(() => _currentIndex = index);
+          _updateMetaForIndex(index);
+        },
+        builder: _buildGalleryPage,
+        loadingBuilder: _buildGalleryLoading,
+        backgroundDecoration: const BoxDecoration(color: Colors.black),
+      ),
+    );
+    if (immersive) {
+      return gallery;
+    }
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        gallery,
+        _buildPageTurnButton(
+          alignment: Alignment.centerLeft,
+          icon: Icons.chevron_left_rounded,
+          tooltip: '上一张',
+          enabled: _currentIndex > 0,
+          onPressed: _goToPrev,
+        ),
+        _buildPageTurnButton(
+          alignment: Alignment.centerRight,
+          icon: Icons.chevron_right_rounded,
+          tooltip: '下一张',
+          enabled: _currentIndex < total - 1,
+          onPressed: _goToNext,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPageTurnButton({
+    required Alignment alignment,
+    required IconData icon,
+    required String tooltip,
+    required bool enabled,
+    required VoidCallback onPressed,
+  }) {
+    return Align(
+      alignment: alignment,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Material(
+          color: Colors.black.withValues(alpha: enabled ? 0.45 : 0.18),
+          shape: const CircleBorder(),
+          child: IconButton(
+            tooltip: tooltip,
+            icon: Icon(icon),
+            iconSize: 40,
+            color: enabled ? Colors.white : Colors.white38,
+            onPressed: enabled ? onPressed : null,
           ),
         ),
       ),
     );
   }
 
+  PhotoViewGalleryPageOptions _buildGalleryPage(
+    BuildContext context,
+    int index,
+  ) {
+    final String path = widget.imagePaths[index];
+    return PhotoViewGalleryPageOptions(
+      imageProvider: FileImage(File(path)),
+      minScale: PhotoViewComputedScale.contained,
+      maxScale: PhotoViewComputedScale.covered * 2.5,
+      initialScale: PhotoViewComputedScale.contained,
+      onTapUp:
+          (
+            BuildContext context,
+            TapUpDetails details,
+            PhotoViewControllerValue value,
+          ) {
+            Navigator.of(context).maybePop();
+          },
+      onScaleEnd:
+          (
+            BuildContext context,
+            ScaleEndDetails details,
+            PhotoViewControllerValue value,
+          ) {
+            final double scale = value.scale ?? 1.0;
+            setState(() {
+              _currentScale = scale;
+              _baseScale ??= scale;
+            });
+          },
+      errorBuilder:
+          (BuildContext context, Object error, StackTrace? stackTrace) {
+            debugPrint(
+              '$_logPath#PhotoView: load failed path=$path error=$error',
+            );
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  '无法加载图片\n$error',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ),
+            );
+          },
+    );
+  }
+
+  Widget _buildGalleryLoading(BuildContext context, ImageChunkEvent? event) {
+    if (event == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final int? totalBytes = event.expectedTotalBytes;
+    final double? value = totalBytes != null && totalBytes > 0
+        ? event.cumulativeBytesLoaded / totalBytes
+        : null;
+    return Center(child: CircularProgressIndicator(value: value));
+  }
+
   @override
   Widget build(BuildContext context) {
     final int total = widget.imagePaths.length;
+    final bool immersive = _immersiveFullscreenPreview;
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black.withValues(alpha: 0.88),
-        foregroundColor: Colors.white,
-        title: _buildTitleColumn(),
-      ),
+      appBar: immersive
+          ? null
+          : AppBar(
+              backgroundColor: Colors.black.withValues(alpha: 0.88),
+              foregroundColor: Colors.white,
+              title: _buildTitleColumn(),
+            ),
       body: Focus(
         focusNode: _focusNode,
         autofocus: true,
@@ -511,103 +744,9 @@ class _LocalImageGalleryPageState extends State<LocalImageGalleryPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onHorizontalDragStart: (DragStartDetails details) {
-                  if (!_isAtBaseScaleOrUnknown) {
-                    _dragDeltaX = 0;
-                    return;
-                  }
-                  _dragDeltaX = 0;
-                },
-                onHorizontalDragUpdate: (DragUpdateDetails details) {
-                  if (!_isAtBaseScaleOrUnknown) {
-                    return;
-                  }
-                  _dragDeltaX += details.delta.dx;
-                },
-                onHorizontalDragEnd: (DragEndDetails details) {
-                  if (!_isAtBaseScaleOrUnknown) {
-                    _dragDeltaX = 0;
-                    return;
-                  }
-                  const double threshold = 80;
-                  if (_dragDeltaX > threshold) {
-                    _goToPrev();
-                  } else if (_dragDeltaX < -threshold) {
-                    _goToNext();
-                  }
-                  _dragDeltaX = 0;
-                },
-                child: PhotoViewGallery.builder(
-                  scrollPhysics: const BouncingScrollPhysics(),
-                  pageController: _pageController,
-                  itemCount: total,
-                  onPageChanged: (int index) {
-                    setState(() => _currentIndex = index);
-                    _updateMetaForIndex(index);
-                  },
-                  builder: (BuildContext context, int index) {
-                    final String path = widget.imagePaths[index];
-                    return PhotoViewGalleryPageOptions(
-                      imageProvider: FileImage(File(path)),
-                      minScale: PhotoViewComputedScale.contained,
-                      maxScale: PhotoViewComputedScale.covered * 2.5,
-                      initialScale: PhotoViewComputedScale.contained,
-                      onTapUp: (
-                        BuildContext context,
-                        TapUpDetails details,
-                        PhotoViewControllerValue value,
-                      ) {
-                        Navigator.of(context).maybePop();
-                      },
-                      onScaleEnd: (
-                        BuildContext context,
-                        ScaleEndDetails details,
-                        PhotoViewControllerValue value,
-                      ) {
-                        final double scale = value.scale ?? 1.0;
-                        setState(() {
-                          _currentScale = scale;
-                          _baseScale ??= scale;
-                        });
-                      },
-                      errorBuilder: (
-                        BuildContext context,
-                        Object error,
-                        StackTrace? stackTrace,
-                      ) {
-                        debugPrint(
-                          '$_logPath#PhotoView: load failed path=$path error=$error',
-                        );
-                        return Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Text(
-                              '无法加载图片\n$error',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.white70),
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                  loadingBuilder: (BuildContext context, ImageChunkEvent? event) {
-                    if (event == null) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    final int? totalBytes = event.expectedTotalBytes;
-                    final double? value = totalBytes != null && totalBytes > 0
-                        ? event.cumulativeBytesLoaded / totalBytes
-                        : null;
-                    return Center(child: CircularProgressIndicator(value: value));
-                  },
-                  backgroundDecoration: const BoxDecoration(color: Colors.black),
-                ),
-              ),
+              child: _buildGalleryArea(immersive: immersive, total: total),
             ),
-            _buildMetaFooter(),
+            if (!immersive) _buildMetaFooter(),
           ],
         ),
       ),

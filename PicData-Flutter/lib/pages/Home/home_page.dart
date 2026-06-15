@@ -61,6 +61,79 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// 按当前 Host 的搜索配置拼接搜索 URL。
+  String _buildSearchUrl(String keyword, PicHost? selectedHost) {
+    final selectedSearchFormat = selectedHost?.searchFormat ?? '';
+    if (selectedSearchFormat.isEmpty) {
+      return '';
+    }
+
+    var value = keyword;
+    if (selectedHost?.searchEncode == true) {
+      value = Uri.encodeComponent(value);
+    }
+    if (selectedSearchFormat.contains('%@')) {
+      return selectedSearchFormat.replaceAll('%@', value);
+    }
+    if (selectedSearchFormat.contains('%s')) {
+      return selectedSearchFormat.replaceAll('%s', value);
+    }
+    return selectedSearchFormat;
+  }
+
+  Future<void> _showSearchDialog() async {
+    final selectedHost = _selectedHost ?? PicNetService.instance.selectedHost;
+    final controller = TextEditingController();
+
+    final keyword = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('搜索'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            textInputAction: TextInputAction.search,
+            decoration: const InputDecoration(hintText: '输入关键字'),
+            onSubmitted: (value) {
+              Navigator.of(context).pop(value);
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(controller.text),
+              child: const Text('搜索'),
+            ),
+          ],
+        );
+      },
+    );
+
+    controller.dispose();
+    if (!mounted || keyword == null) {
+      return;
+    }
+
+    final title = keyword.trim();
+    if (title.isEmpty) {
+      return;
+    }
+
+    final url = _buildSearchUrl(title, selectedHost);
+    if (url.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('当前站点暂不支持搜索')));
+      return;
+    }
+
+    _onEntryTap(HomeEntry(title: title, url: url));
+  }
+
   @override
   Widget build(BuildContext context) {
     final hosts = PicNetService.instance.hosts;
@@ -83,26 +156,6 @@ class _HomePageState extends State<HomePage> {
 
     // 在数据源前面补上当前 Host 的入口标题（PicNetConfig.hosts.urls.title）
     final List<HomeEntry> entries = <HomeEntry>[];
-    final selectedSearchFormat = selectedHost?.searchFormat ?? '';
-    final bool shouldEncode = selectedHost?.searchEncode == true;
-
-    String buildSearchUrl(String title) {
-      var value = title;
-      if (shouldEncode) {
-        value = Uri.encodeComponent(value);
-      }
-      if (selectedSearchFormat.isEmpty) {
-        return '';
-      }
-      if (selectedSearchFormat.contains('%@')) {
-        return selectedSearchFormat.replaceAll('%@', value);
-      }
-      // 兼容某些使用 %s 的配置
-      if (selectedSearchFormat.contains('%s')) {
-        return selectedSearchFormat.replaceAll('%s', value);
-      }
-      return selectedSearchFormat;
-    }
 
     // 1. Host.urls -> 前缀入口
     final Set<String> existedTitles = <String>{};
@@ -120,7 +173,7 @@ class _HomePageState extends State<HomePage> {
       final title = key.trim();
       if (title.isEmpty || existedTitles.contains(title)) continue;
       existedTitles.add(title);
-      final url = buildSearchUrl(title);
+      final url = _buildSearchUrl(title, selectedHost);
       entries.add(HomeEntry(title: title, url: url));
     }
 
@@ -151,6 +204,11 @@ class _HomePageState extends State<HomePage> {
           child: const Text('导航'),
         ),
         actions: [
+          IconButton(
+            tooltip: '搜索',
+            icon: const Icon(Icons.search),
+            onPressed: _showSearchDialog,
+          ),
           IconButton(
             tooltip: _viewType == HomeViewType.tags ? '切换到列表' : '切换到标签',
             icon: Icon(

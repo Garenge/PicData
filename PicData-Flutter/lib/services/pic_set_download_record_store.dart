@@ -60,8 +60,10 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
   /// 已成功下载完成的套图详情页 [href]，与列表里 [PicContent.href] 对齐。
   Set<String> get completedContentHrefSet {
     return _records
-        .where((PicSetDownloadRecord r) =>
-            r.status == PicSetDownloadTaskStatus.completed)
+        .where(
+          (PicSetDownloadRecord r) =>
+              r.status == PicSetDownloadTaskStatus.completed,
+        )
         .map((PicSetDownloadRecord r) => r.contentHref)
         .where((String h) => h.isNotEmpty)
         .toSet();
@@ -93,6 +95,23 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
     for (final PicSetDownloadRecord r in _records) {
       if (r.contentHref == contentHref) {
         return r;
+      }
+    }
+    return null;
+  }
+
+  /// 按当前本地套图目录精确查找下载记录；用于从文件浏览器回跳详情页。
+  Future<PicSetDownloadRecord?> tryGetRecordByLocalDirectoryPath(
+    String absolutePath,
+  ) async {
+    final String normalizedTarget = p.normalize(absolutePath);
+    for (final PicSetDownloadRecord record in _records) {
+      final String abs = await DownloadFileService.instance
+          .absolutePathFromApplicationDocumentsRelative(
+            record.localDirRelativeToApplicationDocuments,
+          );
+      if (p.equals(p.normalize(abs), normalizedTarget)) {
+        return record;
       }
     }
     return null;
@@ -149,6 +168,67 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
       _records.removeAt(j);
     }
     notifyListeners();
+  }
+
+  /// 取消进行中的套图任务时，先把记录落为终态，再从内存与 SQLite 删除。
+  Future<void> finishAndRemoveRecord(
+    String taskId, {
+    bool deleteLocalFiles = false,
+  }) async {
+    final int i = _records.indexWhere(
+      (PicSetDownloadRecord r) => r.id == taskId,
+    );
+    if (i < 0) {
+      return;
+    }
+    final PicSetDownloadRecord finished = _records[i].copyWith(
+      status: PicSetDownloadTaskStatus.failed,
+      lastErrorMessage: '用户停止并删除任务',
+    );
+    try {
+      await PicDatabase.instance.downloadRecords.upsert(finished);
+    } catch (e, st) {
+      // ignore: avoid_print
+      print(
+        '$_logStore#finishAndRemoveRecord: upsert finished failed '
+        'id=$taskId error=$e',
+      );
+      // ignore: avoid_print
+      print('  stack=$st');
+      rethrow;
+    }
+    _records[i] = finished;
+    notifyListeners();
+    await removeRecord(taskId, deleteLocalFiles: deleteLocalFiles);
+  }
+
+  /// 删除本地文件浏览器中的目录后，按目录相对路径同步移除下载记录。
+  Future<int> removeRecordsUnderLocalPath(String absolutePath) async {
+    final String normalizedTarget = p.normalize(absolutePath);
+    final List<String> idsToRemove = <String>[];
+    for (final PicSetDownloadRecord record in _records) {
+      final String abs = await DownloadFileService.instance
+          .absolutePathFromApplicationDocumentsRelative(
+            record.localDirRelativeToApplicationDocuments,
+          );
+      if (_isSameOrChildPath(p.normalize(abs), normalizedTarget)) {
+        idsToRemove.add(record.id);
+      }
+    }
+    for (final String id in idsToRemove) {
+      await removeRecord(id);
+    }
+    return idsToRemove.length;
+  }
+
+  bool _isSameOrChildPath(String path, String parent) {
+    if (path == parent) {
+      return true;
+    }
+    final String prefix = parent.endsWith(p.separator)
+        ? parent
+        : '$parent${p.separator}';
+    return path.startsWith(prefix);
   }
 
   void _replace(
@@ -235,10 +315,7 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
     _replace(taskId, (PicSetDownloadRecord r) {
       final List<PicSetDownloadFailureDetail> nextFailureDetails = success
           ? r.failureDetails
-          : <PicSetDownloadFailureDetail>[
-              ...r.failureDetails,
-              if (failureDetail != null) failureDetail,
-            ];
+          : <PicSetDownloadFailureDetail>[...r.failureDetails, ?failureDetail];
       return r.copyWith(
         progress: r.progress.copyWith(
           imageJobsSucceeded: success
@@ -279,8 +356,8 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
     });
   }
 
-  /// 将 [failed] 记录重置为 [PicSetDownloadTaskStatus.queued] 并写库，供 [PicDownloadModule] 整套重新解析与下载。
-  Future<void> resetFailedRecordToQueuedForRetry(String taskId) async {
+  /// 将可重新下载的终态记录重置为 [PicSetDownloadTaskStatus.queued] 并写库。
+  Future<void> resetRecordToQueuedForRedownload(String taskId) async {
     final int i = _records.indexWhere(
       (PicSetDownloadRecord r) => r.id == taskId,
     );
@@ -288,7 +365,7 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
       return;
     }
     final PicSetDownloadRecord r = _records[i];
-    if (r.status != PicSetDownloadTaskStatus.failed) {
+    if (!r.status.canRedownload) {
       return;
     }
     final PicSetDownloadRecord next = r.resetToQueuedPreservingIdentity();
@@ -297,7 +374,7 @@ class PicSetDownloadRecordStore extends ChangeNotifier {
     } catch (e, st) {
       // ignore: avoid_print
       print(
-        '$_logStore#resetFailedRecordToQueuedForRetry: upsert failed id=$taskId error=$e',
+        '$_logStore#resetRecordToQueuedForRedownload: upsert failed id=$taskId error=$e',
       );
       // ignore: avoid_print
       print('  stack=$st');
